@@ -6,7 +6,7 @@
  * ALUOp | ALU action | notes  
  * ------|------------|---------------------
  *   00  | add        | for loads and stores
- *   01  | subtract   | for branches
+ *   01  | it varies  | for branches
  *   10  | it varies  | for R-types
  *   11  | it varies  | immediate
  *
