@@ -147,7 +147,7 @@ $ python3 test.py
     ``sudo add-apt-repository ppa:deadsnakes/ppa``, 
     ``sudo apt update`` and
     ``sudo apt install python3.8``.
-    * macOS & Ubuntu 20.04: Python 3 is pre-installed, so there should be no errors when executing `test.py`.
+    * macOS & (Ubuntu 20.04 & after): Python 3 is pre-installed, so there should be no errors when executing `test.py`.
 
 ## Submission
 
