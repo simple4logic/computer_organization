@@ -114,7 +114,15 @@ register_file m_register_file(
 ///////////////////////////////////////////////////////////////////////////////
 // TODO : Immediate Generator
 //////////////////////////////////////////////////////////////////////////////
+wire [DATA_WIDTH-1:0] sextimm; // sign-extended immediate value
 
+imm_generator m_imm_generator(
+  // in
+  .instruction(instruction),
+
+  // out
+  .sextimm(sextimm)
+);
 
 ////////////////////////////////////////////////////
 // Execute (EX) 
@@ -137,7 +145,7 @@ wire [31:0] alu_in2;
 ///////////////////////////////////////////////////////////////////////////////
 // TODO : Need a fix
 //////////////////////////////////////////////////////////////////////////////
-assign alu_in2 = rs2_out;
+assign alu_in2 = (alu_src) ? sextimm : rs2_out; // mux for ALU input 2
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -176,8 +184,16 @@ branch_control m_branch_control(
 // TODO : Currently, NEXT_PC is always PC_PLUS_4. Using adders and muxes & 
 // control signals, compute & assign the correct NEXT_PC.
 //////////////////////////////////////////////////////////////////////////////
-assign NEXT_PC = PC_PLUS_4;
+wire [DATA_WIDTH-1:0] PC_PLUS_IMM;
 
+adder m_pc_plus_imm(
+  .in_a(PC),
+  .in_b(sextimm),
+
+  .result(PC_PLUS_IMM)
+);
+
+assign NEXT_PC = (taken) ? PC_PLUS_IMM : PC_PLUS_4;
 
 ///////////////////////////////////////////////////////////////////////////////
 // TODO : Feed the appropriate inputs to the data memory
@@ -187,13 +203,15 @@ data_memory m_data_memory(
   .clk(clk),
   .mem_write(mem_write),
   .mem_read(mem_read),
-  .maskmode(2'b00),
-  .sext(1'b0),
-  .address(32'b0),
-  .write_data(32'b0),
+  .maskmode(funct3[1:0]), // maskmode = funct3[1:0]
+  .sext(funct3[2]), // sign extend for load
+  .address(alu_out),
+  .write_data(rs2_out),
 
+  // out
   .read_data(read_data)
 );
+
 //////////////////////////////////////////////////////////////////////////////
 
 
@@ -204,7 +222,7 @@ data_memory m_data_memory(
 ///////////////////////////////////////////////////////////////////////////////
 // TODO : Need a fix
 //////////////////////////////////////////////////////////////////////////////
-assign write_data = alu_out;
+assign write_data = (mem_to_reg) ? read_data : alu_out;
 
 //////////////////////////////////////////////////////////////////////////////
 endmodule
