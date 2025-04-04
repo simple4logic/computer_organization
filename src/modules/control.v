@@ -26,12 +26,12 @@ always @(*) begin
 		//////////////////////////////////////////////////////////////////////////
 		// TODO : Implement signals for other instruction types
 		// jump[1:0], branch, mem_read, mem_to_reg, alu_op[1:0], mem_write, alu_src, reg_write
-		7'b0010011: controls = 10'b00_000_11_001; // I-type (ALU immediate)
+		7'b0010011: controls = 10'b00_000_11_011; // I-type (ALU immediate)
 		7'b0000011: controls = 10'b00_011_00_011; // I-type (load)
-		7'b1100111: controls = 10'b; // I-type (JALR)
+		7'b1100111: controls = 10'bxx_xxx_xx_x1x; // I-type (JALR)
 		7'b0100011: controls = 10'b00_00x_00_110; // S-type (store)
 		7'b1100011: controls = 10'b00_10x_01_000; // B-type (branch)
-		7'b1101111: controls = 10'd0; // J-type (JAL)
+		7'b1101111: controls = 10'bxx_xxx_xx_x0x; // J-type (JAL)
 
 		//////////////////////////////////////////////////////////////////////////
 
