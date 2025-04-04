@@ -55,8 +55,8 @@ always @(*) begin
         3'b000:  alu_func = `OP_XOR; // beq
         3'b001:  alu_func = `OP_SUB; // bne
         3'b100:  alu_func = `OP_SLT; // blt
-        3'b101:  alu_func = `OP_SLTU;// bltu
-        3'b110:  alu_func = `OP_BGE; // bge
+        3'b101:  alu_func = `OP_BGE; // bge
+        3'b110:  alu_func = `OP_SLTU;// bltu
         3'b111:  alu_func = `OP_BGEU;// bgeu
         default: alu_func = `OP_EEE; // should not fall here
       endcase
