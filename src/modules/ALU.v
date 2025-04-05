@@ -47,7 +47,6 @@ always @(*) begin
     //////////////////////////////////////////////////////////////////////////
     // TODO : Generate check signal
     // check result is 0 or not / result == 0, check = 1
-    `OP_ADD:   check = (1'b1);   // for jalr, always true
     `OP_XOR:   check = (result == 32'b0);   // beq: equal
     `OP_SUB:   check = (result != 32'b0);   // bne: not equal
     `OP_SLT:   check = (result == 32'b1);   // blt: signed less than
