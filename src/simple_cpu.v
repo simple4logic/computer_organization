@@ -193,7 +193,23 @@ adder m_pc_plus_imm(
   .result(PC_PLUS_IMM)
 );
 
-assign NEXT_PC = (taken) ? PC_PLUS_IMM : PC_PLUS_4;
+function [DATA_WIDTH-1:0] next_pc_func;
+  input [1:0] jump;
+  input taken;
+  input [DATA_WIDTH-1:0] PC_PLUS_IMM;
+  input [DATA_WIDTH-1:0] PC_PLUS_4;
+  input [DATA_WIDTH-1:0] alu_out;
+  begin
+    case (jump)
+      2'b00: next_pc_func = (taken) ? PC_PLUS_IMM : PC_PLUS_4;
+      2'b01: next_pc_func = PC_PLUS_IMM; // jal (just adder)
+      2'b11: next_pc_func = alu_out; // jalr
+      default: next_pc_func = PC_PLUS_4;
+    endcase
+  end
+endfunction
+
+assign NEXT_PC = next_pc_func(jump, taken, PC_PLUS_IMM, PC_PLUS_4, alu_out);
 
 ///////////////////////////////////////////////////////////////////////////////
 // TODO : Feed the appropriate inputs to the data memory
@@ -222,7 +238,9 @@ data_memory m_data_memory(
 ///////////////////////////////////////////////////////////////////////////////
 // TODO : Need a fix
 //////////////////////////////////////////////////////////////////////////////
-assign write_data = (mem_to_reg) ? read_data : alu_out;
+// if do jump -> write  PC+4 to rd
+// if not jump -> if mem_to_reg -> write data from memory to rd // else write ALU result to rd
+assign write_data = (jump[0]) ? PC_PLUS_4 : ((mem_to_reg) ? read_data : alu_out);
 
 //////////////////////////////////////////////////////////////////////////////
 endmodule
