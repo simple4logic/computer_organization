@@ -30,13 +30,13 @@ module data_memory #(
       // according to maskmode
       case(maskmode)
         2'b00: begin // byte
-          mem_array[address_internal][7:0] <= write_data[7:0]; // write to memory
+          mem_array[address_internal][7:0] <= write_data[7:0];
         end
         2'b01: begin // halfword = 2B
-          mem_array[address_internal][15:0] <= write_data[15:0]; // write to memory
+          mem_array[address_internal][15:0] <= write_data[15:0];
         end
         2'b10: begin // word = 4B
-          mem_array[address_internal] <= write_data; // write to memory
+          mem_array[address_internal] <= write_data;
         end
         default: begin // invalid maskmode, do nothing
         end

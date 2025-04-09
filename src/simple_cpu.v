@@ -117,10 +117,8 @@ register_file m_register_file(
 wire [DATA_WIDTH-1:0] sextimm; // sign-extended immediate value
 
 imm_generator m_imm_generator(
-  // in
   .instruction(instruction),
 
-  // out
   .sextimm(sextimm)
 );
 
@@ -201,7 +199,7 @@ function [DATA_WIDTH-1:0] next_pc_func;
   input [DATA_WIDTH-1:0] alu_out;
   begin
     case (jump)
-      2'b00: next_pc_func = (taken) ? PC_PLUS_IMM : PC_PLUS_4;
+      2'b00: next_pc_func = (taken) ? PC_PLUS_IMM : PC_PLUS_4; // branch or next instruction
       2'b01: next_pc_func = PC_PLUS_IMM; // jal (just adder)
       2'b11: next_pc_func = alu_out; // jalr (use value like ADDI)
       default: next_pc_func = PC_PLUS_4;
