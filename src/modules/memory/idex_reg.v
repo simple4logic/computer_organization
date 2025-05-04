@@ -70,4 +70,60 @@ module idex_reg #(
 
 // TODO: Implement ID/EX pipeline register module
 
+reg [DATA_WIDTH-1:0] reg_ex_PC;
+reg [DATA_WIDTH-1:0] reg_ex_pc_plus_4;
+
+// ex control
+reg reg_ex_branch;
+reg [1:0] reg_ex_aluop;
+reg reg_ex_alusrc;
+reg [1:0] reg_ex_jump;
+
+// mem control
+reg reg_ex_memread;
+reg reg_ex_memwrite;
+
+// wb control
+reg reg_ex_memtoreg;
+reg reg_ex_regwrite;
+
+reg [DATA_WIDTH-1:0] reg_ex_sextimm;
+reg [6:0] reg_ex_funct7;
+reg [2:0] reg_ex_funct3;
+reg [DATA_WIDTH-1:0] reg_ex_readdata1;
+reg [DATA_WIDTH-1:0] reg_ex_readdata2;
+reg [4:0] reg_ex_rs1;
+reg [4:0] reg_ex_rs2;
+reg [4:0] reg_ex_rd;
+
+always @(posedge clk) begin
+  reg_ex_PC        <= id_PC;
+  reg_ex_pc_plus_4 <= id_pc_plus_4;
+
+  // ex control
+  reg_ex_branch    <= id_branch;
+  reg_ex_aluop     <= id_aluop;
+  reg_ex_alusrc    <= id_alusrc;
+  reg_ex_jump      <= id_jump;
+
+  // mem control
+  reg_ex_memread   <= id_memread;
+  reg_ex_memwrite  <= id_memwrite;
+
+  // wb control
+  reg_ex_memtoreg  <= id_memtoreg;
+  reg_ex_regwrite  <= id_regwrite;
+
+  reg_ex_sextimm   <= id_sextimm;
+  reg_ex_funct7    <= id_funct7;
+  reg_ex_funct3    <= id_funct3;
+  reg_ex_readdata1 <= id_readdata1;
+  reg_ex_readdata2 <= id_readdata2;
+  reg_ex_rs1       <= id_rs1;
+  reg_ex_rs2       <= id_rs2;
+  reg_ex_rd        <= id_rd;
+end
+
+
+
 endmodule

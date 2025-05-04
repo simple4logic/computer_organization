@@ -7,7 +7,7 @@
 
 `include "src/modules/utils/defines.v"
 
-module alu
+module alu 
 #(parameter DATA_WIDTH = 32)(
   input [DATA_WIDTH-1:0] in_a, 
   input [DATA_WIDTH-1:0] in_b,
@@ -28,8 +28,14 @@ always @(*) begin
 
     //////////////////////////////////////////////////////////////////////////
     // TODO : Add other operations
-    // - The example below is given as a hint
-    // - `OP_SRA: result = $signed(in_a) >>> in_b[4:0];
+    `OP_SLL : result = in_a << in_b[4:0];
+    `OP_SRL : result = in_a >> in_b[4:0];
+    `OP_SRA : result = $signed(in_a) >>> in_b[4:0];
+    `OP_SLT : result = ($signed(in_a) < $signed(in_b)) ? 1 : 0;
+    `OP_SLTU: result = (in_a < in_b) ? 1 : 0;
+    // only for branch
+    `OP_BGE : result = ($signed(in_a) >= $signed(in_b)) ? 1 : 0;
+    `OP_BGEU: result = (in_a >= in_b) ? 1 : 0;
     //////////////////////////////////////////////////////////////////////////
     default:  result = 32'h0000_0000;
   endcase
@@ -40,6 +46,13 @@ always @(*) begin
   case (alu_func)
     //////////////////////////////////////////////////////////////////////////
     // TODO : Generate check signal
+    // check result is 0 or not / result == 0, check = 1
+    `OP_XOR:   check = (result == 32'b0);   // beq: equal
+    `OP_SUB:   check = (result != 32'b0);   // bne: not equal
+    `OP_SLT:   check = (result == 32'b1);   // blt: signed less than
+    `OP_SLTU:  check = (result == 32'b1);   // bltu: unsigned less than
+    `OP_BGE:   check = (result == 32'b1);   // bge: not less than (greater or equal)
+    `OP_BGEU:  check = (result == 32'b1);   // bgeu: not less than unsigned
     //////////////////////////////////////////////////////////////////////////
     default:  check = 1'b0;
   endcase
