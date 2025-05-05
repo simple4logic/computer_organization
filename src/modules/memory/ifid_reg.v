@@ -36,4 +36,8 @@ always @(posedge clk) begin
   reg_id_instruction  <= if_instruction;
 end
 
+assign id_PC           = reg_id_PC;
+assign id_pc_plus_4    = reg_id_pc_plus_4;
+assign id_instruction  = reg_id_instruction;
+
 endmodule

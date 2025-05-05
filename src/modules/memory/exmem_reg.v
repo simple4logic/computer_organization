@@ -90,4 +90,22 @@ always @(posedge clk) begin
   reg_mem_rd          <= ex_rd;
 end
 
+assign mem_pc_plus_4    = reg_mem_pc_plus_4;
+assign mem_pc_target    = reg_mem_pc_target;
+assign mem_taken        = reg_mem_taken;
+
+// mem control
+assign mem_memread     = reg_mem_memread;
+assign mem_memwrite    = reg_mem_memwrite;
+
+// wb control
+assign mem_jump        = reg_mem_jump;
+assign mem_memtoreg    = reg_mem_memtoreg;
+assign mem_regwrite    = reg_mem_regwrite;
+
+assign mem_alu_result   = reg_mem_alu_result;
+assign mem_writedata    = reg_mem_writedata;
+assign mem_funct3       = reg_mem_funct3;
+assign mem_rd           = reg_mem_rd;
+
 endmodule

@@ -124,6 +124,30 @@ always @(posedge clk) begin
   reg_ex_rd        <= id_rd;
 end
 
+assign ex_PC        = reg_ex_PC;
+assign ex_pc_plus_4 = reg_ex_pc_plus_4;
 
+// ex control
+assign ex_branch    = reg_ex_branch;
+assign ex_aluop     = reg_ex_aluop;
+assign ex_alusrc    = reg_ex_alusrc;
+assign ex_jump      = reg_ex_jump;
+
+// mem control
+assign ex_memread   = reg_ex_memread;
+assign ex_memwrite  = reg_ex_memwrite;
+
+// wb control
+assign ex_memtoreg  = reg_ex_memtoreg;
+assign ex_regwrite  = reg_ex_regwrite;
+
+assign ex_sextimm   = reg_ex_sextimm;
+assign ex_funct7    = reg_ex_funct7;
+assign ex_funct3    = reg_ex_funct3;
+assign ex_readdata1 = reg_ex_readdata1;
+assign ex_readdata2 = reg_ex_readdata2;
+assign ex_rs1       = reg_ex_rs1;
+assign ex_rs2       = reg_ex_rs2;
+assign ex_rd        = reg_ex_rd;
 
 endmodule

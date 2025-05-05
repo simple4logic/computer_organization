@@ -100,7 +100,7 @@ wire [DATA_WIDTH-1:0] MEM_PC_TARGET;
 wire [1:0] 	MEM_jump;
 wire 		MEM_branch;
 wire [1:0] 	MEM_alu_op;
-wire 		MEM_alr_src;
+wire 		MEM_alu_src;
 wire 		MEM_mem_read;
 wire 		MEM_mem_to_reg;
 wire 		MEM_mem_write;
@@ -223,7 +223,7 @@ idex_reg m_idex_reg(
   .id_jump      (ID_jump), // 2bit
   .id_branch    (ID_branch),
   .id_aluop     (ID_alu_op),
-  .id_alusrc    (ID_alr_src),
+  .id_alusrc    (ID_alu_src),
   .id_memread   (ID_mem_read),
   .id_memwrite  (ID_mem_write),
   .id_memtoreg  (ID_mem_to_reg),
@@ -244,8 +244,8 @@ idex_reg m_idex_reg(
   .ex_aluop     (EX_alu_op),
   .ex_alusrc    (EX_alu_src),
   .ex_memread   (EX_mem_read),
-  .ex_memwrite  (EX_mem_to_reg),
-  .ex_memtoreg  (EX_mem_write),
+  .ex_memwrite  (EX_mem_write),
+  .ex_memtoreg  (EX_mem_to_reg),
   .ex_regwrite  (EX_reg_write),
   .ex_sextimm   (EX_sextimm),
   .ex_funct7    (EX_funct7),
@@ -286,6 +286,7 @@ alu_control m_alu_control(
   .alu_func (EX_alu_func)
 );
 
+assign EX_alu_in1 = EX_rs1_out; // ALU input 1 is rs1 output
 assign EX_alu_in2 = (EX_alu_src) ? EX_sextimm : EX_rs2_out; // mux for ALU input 2
 
 /* m_alu */
@@ -351,6 +352,7 @@ function [DATA_WIDTH-1:0] next_pc_func;
 endfunction
 
 assign NEXT_PC = next_pc_func(EX_jump, EX_taken, EX_PC_TARGET, EX_PC_PLUS_4, EX_alu_result);
+// assign NEXT_PC = IF_PC_PLUS_4;
 
 //////////////////////////////////////////////////////////////////////////////////
 // Memory (MEM) 

@@ -64,4 +64,15 @@ always @(posedge clk) begin
   reg_wb_rd           <= mem_rd;
 end
 
+assign wb_pc_plus_4 = reg_wb_pc_plus_4;
+
+// wb control
+assign wb_jump      = reg_wb_jump;
+assign wb_memtoreg  = reg_wb_memtoreg;
+assign wb_regwrite  = reg_wb_regwrite;
+
+assign wb_readdata  = reg_wb_readdata;
+assign wb_alu_result = reg_wb_alu_result;
+assign wb_rd        = reg_wb_rd;
+
 endmodule
