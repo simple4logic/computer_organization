@@ -70,7 +70,7 @@ wire [6:0] EX_funct7;
 wire [2:0] EX_funct3;
 
 wire [4:0] EX_rs1, EX_rs2, EX_rd;
-wire [31:0] EX_rs1_out, EX_rs2_out;
+wire [31:0] EX_rs1_out, EX_rs2_out, EX_rs2_mid_out;
 
 wire [DATA_WIDTH-1:0] EX_sextimm; // sign-extended immediate value
 
@@ -88,9 +88,9 @@ wire [31:0] EX_alu_result;
 wire EX_alu_check;
 wire EX_taken;
 wire [3:0] EX_alu_func;
-wire [31:0] EX_alu_in1;
-wire [31:0] EX_alu_in2;
 
+wire [1:0] forward_a, forward_b; // forwarding signals
+wire [31:0] EX_alu_in1_fwd, EX_alu_in2_fwd; // ALU inputs after forwarding
 
 //////// MEM stage ////////
 wire [DATA_WIDTH-1:0] MEM_PC_PLUS_4;
@@ -286,14 +286,14 @@ alu_control m_alu_control(
   .alu_func (EX_alu_func)
 );
 
-assign EX_alu_in1 = EX_rs1_out; // ALU input 1 is rs1 output
-assign EX_alu_in2 = (EX_alu_src) ? EX_sextimm : EX_rs2_out; // mux for ALU input 2
+// mux 2x1 for ALU input 2
+assign EX_rs2_mid_out = (EX_alu_src) ? EX_sextimm : EX_rs2_out; // mux for ALU input 2
 
 /* m_alu */
 alu m_alu(
   .alu_func (EX_alu_func),
-  .in_a     (EX_alu_in1), 
-  .in_b     (EX_alu_in2), 
+  .in_a     (EX_alu_in1_fwd), 
+  .in_b     (EX_alu_in2_fwd), 
 
   .result   (EX_alu_result),
   .check    (EX_alu_check)
@@ -301,6 +301,36 @@ alu m_alu(
 
 forwarding m_forwarding(
   // TODO: implement forwarding unit & do wiring
+  .rs1(EX_rs1),
+  .rs2(EX_rs2),
+  .rd_exmem(MEM_rd),
+  .reg_write_exmem(MEM_reg_write),
+  .rd_memwb(WB_rd),
+  .reg_write_memwb(WB_reg_write),
+  
+  // 0 : no forward, 1 : forward from EX stage, 2 : forward from MEM stage
+  .forward_a(forward_a), 
+  .forward_b(forward_b)
+);
+
+mux_3x1 m_forward_a_mux(
+  .in1(EX_rs1_out),
+  .in2(MEM_alu_result),
+  .in3(WB_alu_result),
+
+  .select(forward_a),
+
+  .out(EX_alu_in1_fwd)
+);
+
+mux_3x1 m_forward_b_mux(
+  .in1(EX_rs2_mid_out),
+  .in2(MEM_alu_result),
+  .in3(WB_alu_result),
+
+  .select(forward_b),
+
+  .out(EX_alu_in2_fwd)
 );
 
 /* forward to EX/MEM stage registers */
@@ -351,8 +381,8 @@ function [DATA_WIDTH-1:0] next_pc_func;
   end
 endfunction
 
-assign NEXT_PC = next_pc_func(EX_jump, EX_taken, EX_PC_TARGET, EX_PC_PLUS_4, EX_alu_result);
-// assign NEXT_PC = IF_PC_PLUS_4;
+// assign NEXT_PC = next_pc_func(EX_jump, EX_taken, EX_PC_TARGET, EX_PC_PLUS_4, EX_alu_result);
+assign NEXT_PC = IF_PC_PLUS_4;
 
 //////////////////////////////////////////////////////////////////////////////////
 // Memory (MEM) 
@@ -397,7 +427,18 @@ memwb_reg m_memwb_reg(
 //////////////////////////////////////////////////////////////////////////////////
 
 // MUX for write data
-assign selected_write_data = (WB_jump[0]) ? WB_PC_PLUS_4 : ((WB_mem_to_reg) ? WB_read_data : WB_alu_result);
+mux_4x1 m_write_data_mux(
+  .in1(WB_alu_result),
+  .in2(WB_read_data),
+  .in3(WB_PC_PLUS_4),
+  .in4(WB_PC_PLUS_4),
+
+  .select({WB_jump[0], WB_mem_to_reg}),
+
+  .out(selected_write_data)
+);
+
+// assign selected_write_data = (WB_jump[0]) ? WB_PC_PLUS_4 : ((WB_mem_to_reg) ? WB_read_data : WB_alu_result);
 
 
 endmodule
