@@ -327,6 +327,7 @@ forwarding m_forwarding(
   .rs2(EX_rs2),
   .rd_exmem(MEM_rd),
   .reg_write_exmem(MEM_reg_write),
+  .mem_to_reg(WB_mem_to_reg), // when LOAD, we need to forward from MEM/WB reg (현재 MEM에 있는 명령어에서 가져오지만 않으면 됨)
   .rd_memwb(WB_rd),
   .reg_write_memwb(WB_reg_write),
   
@@ -335,20 +336,22 @@ forwarding m_forwarding(
   .forward_b(forward_b)
 );
 
-mux_3x1 m_forward_a_mux(
+mux_4x1 m_forward_a_mux(
   .in1(EX_rs1_out),
-  .in2(MEM_alu_result),
-  .in3(WB_alu_result),
+  .in2(MEM_alu_result), //alu forwarding from EX/MEM stage
+  .in3(WB_alu_result),  //alu forwarding from MEM/WB stage
+  .in4(WB_read_data),  // load-use forwarding from MEM/WB stage (reg에서는 WB_read_data로 나옴)
 
   .select(forward_a),
 
   .out(EX_alu_in1_fwd)
 );
 
-mux_3x1 m_forward_b_mux(
+mux_4x1 m_forward_b_mux(
   .in1(EX_rs2_mid_out),
   .in2(MEM_alu_result),
   .in3(WB_alu_result),
+  .in4(WB_read_data),
 
   .select(forward_b),
 

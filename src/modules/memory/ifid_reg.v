@@ -33,15 +33,20 @@ reg [DATA_WIDTH-1:0] reg_id_pc_plus_4;
 reg [DATA_WIDTH-1:0] reg_id_instruction;
 
 always @(posedge clk) begin
-	if(!flush) begin
+	if(flush) begin
+		reg_id_PC           <= 0;
+		reg_id_pc_plus_4    <= 0;
+		reg_id_instruction  <= 32'h0000_0013; 
+	end
+	else if (stall) begin
+		reg_id_PC           <= reg_id_PC;
+		reg_id_pc_plus_4    <= reg_id_pc_plus_4;
+		reg_id_instruction  <= reg_id_instruction;
+	end
+	else begin // normal operation
 		reg_id_PC           <= if_PC;
 		reg_id_pc_plus_4    <= if_pc_plus_4;
 		reg_id_instruction  <= if_instruction;
-	end
-	else begin
-		reg_id_PC           <= 0;
-		reg_id_pc_plus_4    <= 0;
-		reg_id_instruction  <= 32'h0000_0013;
 	end
 end
 

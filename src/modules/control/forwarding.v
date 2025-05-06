@@ -10,6 +10,7 @@ module forwarding (
     input [4:0] rs2, // Source register 2
     input [4:0] rd_exmem,  // Destination register @ exmem reg
     input reg_write_exmem, // Write enable for EX/MEM stage
+    input mem_to_reg, // Memory to register signal
     input [4:0] rd_memwb, // Destination register @ memwb reg
     input reg_write_memwb, // Write enable for MEM/WB stage
 
@@ -22,29 +23,53 @@ always @(*) begin
     forward_a = 2'b00;
     forward_b = 2'b00;
 
-    // Check if rs1 matches rd_exmem or rd_memwb for forwarding
-    if (rs1 != 0) begin
-        if (rs1 == rd_exmem && reg_write_exmem) begin
-            assign forward_a = 2'b01; // Forward from EX stage
-        end 
-        else if (rs1 == rd_memwb && reg_write_memwb) begin
-            assign forward_a = 2'b10; // Forward from MEM stage
+    // not load instruction, ALU-ALU forwarding
+    if (!mem_to_reg) begin
+        // Check if rs1 matches rd_exmem or rd_memwb for forwarding
+        if (rs1 != 0) begin
+            if ((rs1 == rd_exmem) && reg_write_exmem) begin
+                assign forward_a = 2'b01; // Forward from EX stage (from EX/MEM reg)
+            end 
+            else if (rs1 == rd_memwb && reg_write_memwb) begin
+                assign forward_a = 2'b10; // Forward from MEM stage (from MEM/WB reg)
+            end
+            else begin
+                assign forward_a = 0; // No forwarding
+            end
         end
-        else begin
-            assign forward_a = 0; // No forwarding
+
+        // Check if rs2 matches rd_exmem or rd_memwb for forwarding
+        if (rs2 != 0) begin
+            if (rs2 == rd_exmem && reg_write_exmem) begin
+                assign forward_b = 2'b01; // Forward from EX stage
+            end 
+            else if (rs2 == rd_memwb && reg_write_memwb) begin
+                assign forward_b = 2'b10; // Forward from MEM stage
+            end
+            else begin
+                assign forward_b = 0; // No forwarding
+            end
         end
     end
-
-    // Check if rs2 matches rd_exmem or rd_memwb for forwarding
-    if (rs2 != 0) begin
-        if (rs2 == rd_exmem && reg_write_exmem) begin
-            assign forward_b = 2'b01; // Forward from EX stage
-        end 
-        else if (rs2 == rd_memwb && reg_write_memwb) begin
-            assign forward_b = 2'b10; // Forward from MEM stage
+    // load-use forwarding
+    else begin
+        if (rs1 != 0) begin
+            if (rs1 == rd_memwb && reg_write_memwb) begin
+                assign forward_a = 2'b11; // Forward from MEM stage (from MEM/WB reg)
+            end
+            else begin
+                assign forward_a = 0; // No forwarding
+            end
         end
-        else begin
-            assign forward_b = 0; // No forwarding
+
+        // Check if rs2 matches rd_exmem or rd_memwb for forwarding
+        if (rs2 != 0) begin
+            if (rs2 == rd_memwb && reg_write_memwb) begin
+                assign forward_b = 2'b11; // Forward from MEM stage
+            end
+            else begin
+                assign forward_b = 0; // No forwarding
+            end
         end
     end
 end
