@@ -59,6 +59,7 @@ wire 		ID_mem_to_reg;
 wire 		ID_mem_write;	
 wire 		ID_reg_write; 	
 
+wire stall, flush;
 
 //////// EX stage ////////
 wire [DATA_WIDTH-1:0] EX_PC;
@@ -135,6 +136,12 @@ reg [DATA_WIDTH-1:0] PC;    // program counter (32 bits)
 
 wire [DATA_WIDTH-1:0] NEXT_PC;
 
+assign NEXT_PC =
+     ((EX_jump == 2'b00) && EX_taken) ? EX_PC_TARGET   // 1) branch taken
+   : (EX_jump == 2'b01)               ? EX_PC_TARGET   // 2) JAL
+   : (EX_jump == 2'b11)               ? EX_alu_result // 3) JALR
+   : IF_PC_PLUS_4;                                  // 4) default: PC+4
+
 /* m_next_pc_adder */
 adder m_pc_plus_4_adder(
   .in_a   (PC),
@@ -147,7 +154,8 @@ always @(posedge clk) begin
   if (rstn == 1'b0) begin
     PC <= 32'h00000000;
   end
-  else PC <= NEXT_PC;
+  else if (stall) PC <= PC; // keep PC when stall
+  else            PC <= NEXT_PC;
 end
 
 /* instruction: read current instruction from inst mem */
@@ -167,7 +175,10 @@ ifid_reg m_ifid_reg(
 
   .id_PC          (ID_PC),
   .id_pc_plus_4   (ID_PC_PLUS_4),
-  .id_instruction (ID_instruction)
+  .id_instruction (ID_instruction),
+
+  .flush          (flush),
+  .stall          (stall)
 );
 
 
@@ -178,6 +189,14 @@ ifid_reg m_ifid_reg(
 /* m_hazard: hazard detection unit */
 hazard m_hazard(
   // TODO: implement hazard detection unit & do wiring
+  .ID_rs1(ID_rs1),
+  .ID_rs2(ID_rs2),
+  .EX_rd(EX_rd),
+  .EX_mem_read(EX_mem_read),
+  .branch_taken(EX_taken),
+
+  .flush(flush),
+  .stall(stall)
 );
 
 /* m_control: control unit */
@@ -254,7 +273,10 @@ idex_reg m_idex_reg(
   .ex_readdata2 (EX_rs2_out),
   .ex_rs1       (EX_rs1),
   .ex_rs2       (EX_rs2),
-  .ex_rd        (EX_rd)
+  .ex_rd        (EX_rd),
+
+  .flush        (flush),
+  .stall        (stall)
 );
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -364,26 +386,6 @@ exmem_reg m_exmem_reg(
   .mem_rd         (MEM_rd)
 );
 
-// logic for next pc
-function [DATA_WIDTH-1:0] next_pc_func;
-  input [1:0] jump;
-  input taken;
-  input [DATA_WIDTH-1:0] PC_PLUS_IMM;
-  input [DATA_WIDTH-1:0] PC_PLUS_4;
-  input [DATA_WIDTH-1:0] alu_out;
-  begin
-    case (jump)
-      2'b00: next_pc_func = (taken) ? PC_PLUS_IMM : PC_PLUS_4; // branch or next instruction
-      2'b01: next_pc_func = PC_PLUS_IMM; // jal (just adder)
-      2'b11: next_pc_func = alu_out; // jalr (use value like ADDI)
-      default: next_pc_func = PC_PLUS_4;
-    endcase
-  end
-endfunction
-
-// assign NEXT_PC = next_pc_func(EX_jump, EX_taken, EX_PC_TARGET, EX_PC_PLUS_4, EX_alu_result);
-assign NEXT_PC = IF_PC_PLUS_4;
-
 //////////////////////////////////////////////////////////////////////////////////
 // Memory (MEM) 
 //////////////////////////////////////////////////////////////////////////////////
@@ -437,8 +439,5 @@ mux_4x1 m_write_data_mux(
 
   .out(selected_write_data)
 );
-
-// assign selected_write_data = (WB_jump[0]) ? WB_PC_PLUS_4 : ((WB_mem_to_reg) ? WB_read_data : WB_alu_result);
-
 
 endmodule
