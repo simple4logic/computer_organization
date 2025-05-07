@@ -5,7 +5,7 @@ module exmem_reg #(
   	parameter DATA_WIDTH = 32
 )(
 	// TODO: Add flush or stall signal if it is needed
-	// Nothing is needed
+	input flush,
 
 	//////////////////////////////////////
 	// Inputs
@@ -72,23 +72,44 @@ reg [2:0] reg_mem_funct3;
 reg [4:0] reg_mem_rd;
 
 always @(posedge clk) begin
-	reg_mem_pc_plus_4 	<= ex_pc_plus_4;
-	reg_mem_pc_target 	<= ex_pc_target;
-	reg_mem_taken     	<= ex_taken;
+	if(flush) begin
+		reg_mem_pc_plus_4 	<= 0;
+		reg_mem_pc_target 	<= 0;
+		reg_mem_taken     	<= 0;
 
-	// mem control
-	reg_mem_memread   	<= ex_memread;
-	reg_mem_memwrite  	<= ex_memwrite;
+		// mem control
+		reg_mem_memread   	<= 0;
+		reg_mem_memwrite  	<= 0;
 
-	// wb control
-	reg_mem_jump      	<= ex_jump;
-	reg_mem_memtoreg  	<= ex_memtoreg;
-	reg_mem_regwrite  	<= ex_regwrite;
+		// wb control
+		reg_mem_jump      	<= 0;
+		reg_mem_memtoreg  	<= 0;
+		reg_mem_regwrite  	<= 0;
 
-	reg_mem_alu_result  <= ex_alu_result;
-	reg_mem_writedata   <= ex_writedata;
-	reg_mem_funct3      <= ex_funct3;
-	reg_mem_rd          <= ex_rd;
+		reg_mem_alu_result  <= 0;
+		reg_mem_writedata   <= 0;
+		reg_mem_funct3      <= 0;
+		reg_mem_rd          <= 0;
+	end
+	else begin
+		reg_mem_pc_plus_4 	<= ex_pc_plus_4;
+		reg_mem_pc_target 	<= ex_pc_target;
+		reg_mem_taken     	<= ex_taken;
+
+		// mem control
+		reg_mem_memread   	<= ex_memread;
+		reg_mem_memwrite  	<= ex_memwrite;
+
+		// wb control
+		reg_mem_jump      	<= ex_jump;
+		reg_mem_memtoreg  	<= ex_memtoreg;
+		reg_mem_regwrite  	<= ex_regwrite;
+
+		reg_mem_alu_result  <= ex_alu_result;
+		reg_mem_writedata   <= ex_writedata;
+		reg_mem_funct3      <= ex_funct3;
+		reg_mem_rd          <= ex_rd;
+	end
 end
 
 assign mem_pc_plus_4    = reg_mem_pc_plus_4;

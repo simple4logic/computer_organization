@@ -99,7 +99,7 @@ reg [4:0] reg_ex_rs2;
 reg [4:0] reg_ex_rd;
 
 always @(posedge clk) begin
-	if(flush || stall) begin
+	if(flush) begin
 		reg_ex_PC        <= 0;
 		reg_ex_pc_plus_4 <= 0;
 
@@ -125,6 +125,21 @@ always @(posedge clk) begin
 		reg_ex_rs1       <= 0;
 		reg_ex_rs2       <= 0;
 		reg_ex_rd        <= 0;
+	end
+	else if(stall) begin
+		// ex control
+		reg_ex_branch    <= 0;
+		reg_ex_aluop     <= 0;
+		reg_ex_alusrc    <= 0;
+		reg_ex_jump      <= 0;
+
+		// mem control
+		reg_ex_memread   <= 0;
+		reg_ex_memwrite  <= 0;
+
+		// wb control
+		reg_ex_memtoreg  <= 0;
+		reg_ex_regwrite  <= 0;
 	end
 	else begin
 		reg_ex_PC        <= id_PC;

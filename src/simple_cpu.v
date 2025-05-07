@@ -126,7 +126,7 @@ wire [31:0] WB_read_data;
 wire [31:0] WB_alu_result;
 wire [4:0] 	WB_rd;
 
-wire [31:0] selected_write_data;
+wire [31:0] WB_write_data;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Instruction Fetch (IF)
@@ -137,9 +137,9 @@ reg [DATA_WIDTH-1:0] PC;    // program counter (32 bits)
 wire [DATA_WIDTH-1:0] NEXT_PC;
 
 assign NEXT_PC =
-     ((EX_jump == 2'b00) && EX_taken) ? EX_PC_TARGET   // 1) branch taken
-   : (EX_jump == 2'b01)               ? EX_PC_TARGET   // 2) JAL
-   : (EX_jump == 2'b11)               ? EX_alu_result // 3) JALR
+     ((MEM_jump == 2'b00) && MEM_taken) ? MEM_PC_TARGET   // 1) branch taken
+   : (MEM_jump == 2'b01)                ? MEM_PC_TARGET   // 2) JAL
+   : (MEM_jump == 2'b11)                ? MEM_alu_result // 3) JALR
    : IF_PC_PLUS_4;                                  // 4) default: PC+4
 
 /* m_next_pc_adder */
@@ -154,8 +154,8 @@ always @(posedge clk) begin
   if (rstn == 1'b0) begin
     PC <= 32'h00000000;
   end
-  else if (stall) PC <= PC; // keep PC when stall
-  else            PC <= NEXT_PC;
+  else if (!flush && stall) PC <= PC; // keep PC when stall
+  else                      PC <= NEXT_PC;
 end
 
 /* instruction: read current instruction from inst mem */
@@ -193,7 +193,8 @@ hazard m_hazard(
   .ID_rs2(ID_rs2),
   .EX_rd(EX_rd),
   .EX_mem_read(EX_mem_read),
-  .branch_taken(EX_taken),
+  .branch_taken(MEM_taken),
+  // 지금 0x94 jal 에서 안뛰고 잇음 내껀
 
   .flush(flush),
   .stall(stall)
@@ -227,7 +228,7 @@ register_file m_register_file(
   .readreg2   (ID_rs2),
   .writereg   (WB_rd),
   .wen        (WB_reg_write),
-  .writedata  (selected_write_data),
+  .writedata  (WB_write_data),
 
   .readdata1  (ID_rs1_out),
   .readdata2  (ID_rs2_out)
@@ -299,6 +300,8 @@ branch_control m_branch_control(
   .taken  (EX_taken)
 );
 
+wire EX_taken_all = EX_taken | EX_jump[0];
+
 /* alu control : generates alu_func signal */
 alu_control m_alu_control(
   .alu_op   (EX_alu_op),
@@ -307,9 +310,6 @@ alu_control m_alu_control(
 
   .alu_func (EX_alu_func)
 );
-
-// mux 2x1 for ALU input 2
-assign EX_rs2_mid_out = (EX_alu_src) ? EX_sextimm : EX_rs2_out; // mux for ALU input 2
 
 /* m_alu */
 alu m_alu(
@@ -339,8 +339,7 @@ forwarding m_forwarding(
 mux_4x1 m_forward_a_mux(
   .in1(EX_rs1_out),
   .in2(MEM_alu_result), //alu forwarding from EX/MEM stage
-  .in3(WB_alu_result),  //alu forwarding from MEM/WB stage
-  .in4(WB_read_data),  // load-use forwarding from MEM/WB stage (reg에서는 WB_read_data로 나옴)
+  .in3(WB_write_data),  //alu forwarding from MEM/WB stage
 
   .select(forward_a),
 
@@ -348,14 +347,23 @@ mux_4x1 m_forward_a_mux(
 );
 
 mux_4x1 m_forward_b_mux(
-  .in1(EX_rs2_mid_out),
+  .in1(EX_rs2_out),
   .in2(MEM_alu_result),
-  .in3(WB_alu_result),
-  .in4(WB_read_data),
+  .in3(WB_write_data),
 
   .select(forward_b),
 
-  .out(EX_alu_in2_fwd)
+  .out(EX_rs2_mid_out)
+);
+
+// mux 2x1 for ALU input 2
+mux_2x1 m_alu_src_mux(
+  .in1(EX_rs2_mid_out), // rs2 value
+  .in2(EX_sextimm),     // imm value
+
+  .select(EX_alu_src),
+
+  .out(EX_alu_in2_fwd) // ALU input 2
 );
 
 /* forward to EX/MEM stage registers */
@@ -364,14 +372,14 @@ exmem_reg m_exmem_reg(
   .clk            (clk),
   .ex_pc_plus_4   (EX_PC_PLUS_4),
   .ex_pc_target   (EX_PC_TARGET),
-  .ex_taken       (EX_taken), 
+  .ex_taken       (EX_taken_all), 
   .ex_jump        (EX_jump),
   .ex_memread     (EX_mem_read),
   .ex_memwrite    (EX_mem_write),
   .ex_memtoreg    (EX_mem_to_reg),
   .ex_regwrite    (EX_reg_write),
   .ex_alu_result  (EX_alu_result),
-  .ex_writedata   (EX_rs2_out), // data to be written @ MEM stage
+  .ex_writedata   (EX_rs2_mid_out), // data to be written @ MEM stage
   .ex_funct3      (EX_funct3),
   .ex_rd          (EX_rd),
   
@@ -386,7 +394,9 @@ exmem_reg m_exmem_reg(
   .mem_alu_result (MEM_alu_result),
   .mem_writedata  (MEM_write_data),
   .mem_funct3     (MEM_funct3),
-  .mem_rd         (MEM_rd)
+  .mem_rd         (MEM_rd),
+
+  .flush          (flush)
 );
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -435,12 +445,12 @@ memwb_reg m_memwb_reg(
 mux_4x1 m_write_data_mux(
   .in1(WB_alu_result),
   .in2(WB_read_data),
-  .in3(WB_PC_PLUS_4),
-  .in4(WB_PC_PLUS_4),
+  .in3(WB_PC_PLUS_4), // jalr jal
+  .in4(WB_PC_PLUS_4), // jalr jal
 
   .select({WB_jump[0], WB_mem_to_reg}),
 
-  .out(selected_write_data)
+  .out(WB_write_data)
 );
 
 endmodule

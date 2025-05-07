@@ -36,7 +36,7 @@ always @(posedge clk) begin
 	if(flush) begin
 		reg_id_PC           <= 0;
 		reg_id_pc_plus_4    <= 0;
-		reg_id_instruction  <= 32'h0000_0013; 
+		reg_id_instruction  <= 32'h0; 
 	end
 	else if (stall) begin
 		reg_id_PC           <= reg_id_PC;

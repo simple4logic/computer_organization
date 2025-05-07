@@ -18,12 +18,10 @@ module hazard (
 
 // stall logic
 // when lw && dist = 1 (EX)
-wire lw_hazard = EX_mem_read &&
-    ((ID_rs1 != 5'd0 && ID_rs1 == EX_rd) ||
-    (ID_rs2 != 5'd0 && ID_rs2 == EX_rd) );
+assign stall =  (EX_mem_read && (ID_rs1 != 0) && (ID_rs1 == EX_rd)) ||
+                (EX_mem_read && (ID_rs2 != 0) && (ID_rs2 == EX_rd));
 
 // flush logic
-assign stall = lw_hazard;
 assign flush = branch_taken;
 
 endmodule
