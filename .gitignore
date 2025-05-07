@@ -1,5 +1,5 @@
-data/inst.mem
-data/register.mem
 data/stat.out
 sim.vcd
-simple_cpu
+simple_cpu*
+*.mem
+*.gtkw
