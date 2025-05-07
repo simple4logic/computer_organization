@@ -327,7 +327,6 @@ forwarding m_forwarding(
   .rs2(EX_rs2),
   .rd_exmem(MEM_rd),
   .reg_write_exmem(MEM_reg_write),
-  .mem_to_reg(WB_mem_to_reg), // when LOAD, we need to forward from MEM/WB reg (현재 MEM에 있는 명령어에서 가져오지만 않으면 됨)
   .rd_memwb(WB_rd),
   .reg_write_memwb(WB_reg_write),
   
