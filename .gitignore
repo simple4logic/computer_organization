@@ -1,0 +1,4 @@
+sim.vcd
+simple_cpu
+*.mem
+*.out
