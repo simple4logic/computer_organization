@@ -36,7 +36,7 @@ module alu_control(
 );
 
 wire [3:0] funct;
-assign funct = {funct7[5], funct3};
+assign funct = {funct7[5], funct3}; // 4 bits
 
 // combinational logic
 always @(*) begin
@@ -44,11 +44,22 @@ always @(*) begin
     2'b00: begin
       ///////////////////////////////////////////////////////////////////////
       // TODO : select operation for loads/stores
+      alu_func = `OP_ADD; // for loads and stores
       ///////////////////////////////////////////////////////////////////////
     end
     2'b01: begin
       ///////////////////////////////////////////////////////////////////////
       // TODO : select operation for branches
+      // beq, bne, blt, bge, bltu, bgeu
+      case(funct3)
+        3'b000:  alu_func = `OP_XOR; // beq
+        3'b001:  alu_func = `OP_SUB; // bne
+        3'b100:  alu_func = `OP_SLT; // blt
+        3'b101:  alu_func = `OP_BGE; // bge
+        3'b110:  alu_func = `OP_SLTU;// bltu
+        3'b111:  alu_func = `OP_BGEU;// bgeu
+        default: alu_func = `OP_EEE; // should not fall here
+      endcase
       ///////////////////////////////////////////////////////////////////////
     end
     2'b10: begin                // R-types
@@ -69,6 +80,23 @@ always @(*) begin
     2'b11: begin
       ///////////////////////////////////////////////////////////////////////
       // TODO : select operation for I-types with immediate
+      // addi, xori, ori, andi, slli, srli, srai, slti, sltiu
+      case (funct3)
+        3'b000: alu_func = `OP_ADD; // addi
+        3'b100: alu_func = `OP_XOR; // xori
+        3'b110: alu_func = `OP_OR;  // ori
+        3'b111: alu_func = `OP_AND; // andi
+        3'b001: alu_func = `OP_SLL; // slli
+        3'b101: begin
+          if (funct7[5] == 1'b0)
+            alu_func = `OP_SRL; // srli
+          else
+            alu_func = `OP_SRA; // srai
+        end
+        3'b010: alu_func = `OP_SLT; // slti
+        3'b011: alu_func = `OP_SLTU;// sltiu
+        default: alu_func = `OP_EEE; // should not fall here      
+      endcase
       ///////////////////////////////////////////////////////////////////////
     end
     default: alu_func = `OP_EEE;       // should not fall here
