@@ -66,12 +66,12 @@ wire [DATA_WIDTH-1:0] EX_PC;
 wire [DATA_WIDTH-1:0] EX_PC_PLUS_4;
 wire [DATA_WIDTH-1:0] EX_PC_TARGET;
 
-wire [6:0] EX_opcode;
 wire [6:0] EX_funct7;
 wire [2:0] EX_funct3;
 
 wire [4:0] EX_rs1, EX_rs2, EX_rd;
-wire [31:0] EX_rs1_out, EX_rs2_out, EX_rs2_mid_out;
+wire [31:0] EX_rs1_out, EX_rs2_out, EX_rs1_mid_out, EX_rs2_mid_out;
+wire [6:0] EX_opcode; // u-type instruction
 
 wire [DATA_WIDTH-1:0] EX_sextimm; // sign-extended immediate value
 
@@ -194,7 +194,6 @@ hazard m_hazard(
   .EX_rd(EX_rd),
   .EX_mem_read(EX_mem_read),
   .branch_taken(MEM_taken),
-  // 지금 0x94 jal 에서 안뛰고 잇음 내껀
 
   .flush(flush),
   .stall(stall)
@@ -240,6 +239,7 @@ idex_reg m_idex_reg(
   .clk          (clk),
   .id_PC        (ID_PC),
   .id_pc_plus_4 (ID_PC_PLUS_4),
+  .id_opcode    (ID_opcode),
   .id_jump      (ID_jump), // 2bit
   .id_branch    (ID_branch),
   .id_aluop     (ID_alu_op),
@@ -259,6 +259,7 @@ idex_reg m_idex_reg(
 
   .ex_PC        (EX_PC),
   .ex_pc_plus_4 (EX_PC_PLUS_4),
+  .ex_opcode    (EX_opcode),
   .ex_jump      (EX_jump),
   .ex_branch    (EX_branch),
   .ex_aluop     (EX_alu_op),
@@ -270,7 +271,7 @@ idex_reg m_idex_reg(
   .ex_sextimm   (EX_sextimm),
   .ex_funct7    (EX_funct7),
   .ex_funct3    (EX_funct3),
-  .ex_readdata1 (EX_rs1_out),
+  .ex_readdata1 (EX_rs1_out), // data from RF after reading
   .ex_readdata2 (EX_rs2_out),
   .ex_rs1       (EX_rs1),
   .ex_rs2       (EX_rs2),
@@ -283,6 +284,11 @@ idex_reg m_idex_reg(
 //////////////////////////////////////////////////////////////////////////////////
 // Execute (EX) 
 //////////////////////////////////////////////////////////////////////////////////
+
+wire [1:0] EX_u_type;
+wire is_lui = (EX_opcode == 7'b0110111);
+wire is_auipc = (EX_opcode == 7'b0010111);
+assign EX_u_type = {is_auipc, is_lui}; // u_type
 
 /* m_branch_target_adder: PC + imm for branch address */
 adder m_branch_target_adder(
@@ -342,7 +348,7 @@ mux_3x1 m_forward_a_mux(
 
   .select(forward_a),
 
-  .out(EX_alu_in1_fwd)
+  .out(EX_rs1_mid_out)
 );
 
 mux_3x1 m_forward_b_mux(
@@ -355,7 +361,18 @@ mux_3x1 m_forward_b_mux(
   .out(EX_rs2_mid_out)
 );
 
-// mux 2x1 for ALU input 2
+// mux 3x1 for u-type instruction
+mux_3x1 m_utype_select(
+  .in1(EX_rs1_mid_out),
+  .in2(32'b0), // lui   = {0, 1}
+  .in3(EX_PC), // auipc = {1, 0}
+
+  .select(EX_u_type),
+
+  .out(EX_alu_in1_fwd)
+);
+
+// mux 2x1 for ALU input 2 (choose between rs2 and imm)
 mux_2x1 m_alu_src_mux(
   .in1(EX_rs2_mid_out), // rs2 value
   .in2(EX_sextimm),     // imm value

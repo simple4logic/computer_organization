@@ -16,6 +16,7 @@ module idex_reg #(
 
 	input [DATA_WIDTH-1:0] id_PC,
 	input [DATA_WIDTH-1:0] id_pc_plus_4,
+	input [6:0] id_opcode,
 
 	// ex control
 	input [1:0] id_jump,
@@ -45,6 +46,7 @@ module idex_reg #(
 	//////////////////////////////////////
 	output [DATA_WIDTH-1:0] ex_PC,
 	output [DATA_WIDTH-1:0] ex_pc_plus_4,
+	output [6:0] ex_opcode,
 
 	// ex control
 	output ex_branch,
@@ -74,6 +76,7 @@ module idex_reg #(
 
 reg [DATA_WIDTH-1:0] reg_ex_PC;
 reg [DATA_WIDTH-1:0] reg_ex_pc_plus_4;
+reg [6:0] reg_ex_opcode;
 
 // ex control
 reg reg_ex_branch;
@@ -102,6 +105,7 @@ always @(posedge clk) begin
 	if(flush) begin
 		reg_ex_PC        <= 0;
 		reg_ex_pc_plus_4 <= 0;
+		reg_ex_opcode	 <= 0; // remove when stall?? TODO
 
 		// ex control
 		reg_ex_branch    <= 0;
@@ -144,6 +148,7 @@ always @(posedge clk) begin
 	else begin
 		reg_ex_PC        <= id_PC;
 		reg_ex_pc_plus_4 <= id_pc_plus_4;
+		reg_ex_opcode	 <= id_opcode;
 
 		// ex control
 		reg_ex_branch    <= id_branch;
@@ -172,6 +177,7 @@ end
 
 assign ex_PC        = reg_ex_PC;
 assign ex_pc_plus_4 = reg_ex_pc_plus_4;
+assign ex_opcode    = reg_ex_opcode;
 
 // ex control
 assign ex_branch    = reg_ex_branch;
