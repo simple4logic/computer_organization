@@ -139,8 +139,9 @@ wire [DATA_WIDTH-1:0] NEXT_PC;
 assign NEXT_PC =
      ((MEM_jump == 2'b00) && MEM_taken) ? MEM_PC_TARGET   // 1) branch taken
    : (MEM_jump == 2'b01)                ? MEM_PC_TARGET   // 2) JAL
-   : (MEM_jump == 2'b11)                ? MEM_alu_result // 3) JALR
-   : IF_PC_PLUS_4;                                  // 4) default: PC+4
+   : (MEM_jump == 2'b11)                ? MEM_alu_result  // 3) JALR
+   : (!flush && stall)                  ? PC              // 4) stall 
+   : IF_PC_PLUS_4;                                        // 5) default: PC+4
 
 /* m_next_pc_adder */
 adder m_pc_plus_4_adder(
@@ -154,8 +155,7 @@ always @(posedge clk) begin
   if (rstn == 1'b0) begin
     PC <= 32'h00000000;
   end
-  else if (!flush && stall) PC <= PC; // keep PC when stall
-  else                      PC <= NEXT_PC;
+  else PC <= NEXT_PC;
 end
 
 /* instruction: read current instruction from inst mem */
@@ -467,6 +467,19 @@ mux_4x1 m_write_data_mux(
   .select({WB_jump[0], WB_mem_to_reg}),
 
   .out(WB_write_data)
+);
+
+//////////////////////////////////////////////////////////////////////////////////
+// Hardware Counters
+//////////////////////////////////////////////////////////////////////////////////
+wire [31:0] CORE_CYCLE;
+
+hardware_counter m_core_cycle(
+  .clk(clk),
+  .rstn(rstn),
+  .cond(1'b1),
+
+  .counter(CORE_CYCLE)
 );
 
 endmodule
