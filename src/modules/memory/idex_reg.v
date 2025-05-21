@@ -16,6 +16,7 @@ module idex_reg #(
 
 	input [DATA_WIDTH-1:0] id_PC,
 	input [DATA_WIDTH-1:0] id_pc_plus_4,
+	input [DATA_WIDTH-1:0] id_pc_predicted,
 	input [6:0] id_opcode,
 
 	// ex control
@@ -46,6 +47,7 @@ module idex_reg #(
 	//////////////////////////////////////
 	output [DATA_WIDTH-1:0] ex_PC,
 	output [DATA_WIDTH-1:0] ex_pc_plus_4,
+	output [DATA_WIDTH-1:0] ex_pc_predicted,
 	output [6:0] ex_opcode,
 
 	// ex control
@@ -76,6 +78,7 @@ module idex_reg #(
 
 reg [DATA_WIDTH-1:0] reg_ex_PC;
 reg [DATA_WIDTH-1:0] reg_ex_pc_plus_4;
+reg [DATA_WIDTH-1:0] reg_ex_pc_predicted;
 reg [6:0] reg_ex_opcode;
 
 // ex control
@@ -105,6 +108,7 @@ always @(posedge clk) begin
 	if(flush) begin
 		reg_ex_PC        <= 0;
 		reg_ex_pc_plus_4 <= 0;
+		reg_ex_pc_predicted <= 0;
 		reg_ex_opcode	 <= 0; // remove when stall?? TODO
 
 		// ex control
@@ -146,60 +150,62 @@ always @(posedge clk) begin
 		reg_ex_regwrite  <= 0;
 	end
 	else begin
-		reg_ex_PC        <= id_PC;
-		reg_ex_pc_plus_4 <= id_pc_plus_4;
-		reg_ex_opcode	 <= id_opcode;
+		reg_ex_PC        	<= id_PC;
+		reg_ex_pc_plus_4 	<= id_pc_plus_4;
+		reg_ex_pc_predicted <= id_pc_predicted;
+		reg_ex_opcode	 	<= id_opcode;
 
 		// ex control
-		reg_ex_branch    <= id_branch;
-		reg_ex_aluop     <= id_aluop;
-		reg_ex_alusrc    <= id_alusrc;
-		reg_ex_jump      <= id_jump;
+		reg_ex_branch    	<= id_branch;
+		reg_ex_aluop     	<= id_aluop;
+		reg_ex_alusrc    	<= id_alusrc;
+		reg_ex_jump      	<= id_jump;
 
-		// mem control
-		reg_ex_memread   <= id_memread;
-		reg_ex_memwrite  <= id_memwrite;
+		// mem control	
+		reg_ex_memread   	<= id_memread;
+		reg_ex_memwrite  	<= id_memwrite;
 
-		// wb control
-		reg_ex_memtoreg  <= id_memtoreg;
-		reg_ex_regwrite  <= id_regwrite;
+		// wb control	
+		reg_ex_memtoreg  	<= id_memtoreg;
+		reg_ex_regwrite  	<= id_regwrite;
 
-		reg_ex_sextimm   <= id_sextimm;
-		reg_ex_funct7    <= id_funct7;
-		reg_ex_funct3    <= id_funct3;
-		reg_ex_readdata1 <= id_readdata1;
-		reg_ex_readdata2 <= id_readdata2;
-		reg_ex_rs1       <= id_rs1;
-		reg_ex_rs2       <= id_rs2;
-		reg_ex_rd        <= id_rd;
+		reg_ex_sextimm   	<= id_sextimm;
+		reg_ex_funct7    	<= id_funct7;
+		reg_ex_funct3    	<= id_funct3;
+		reg_ex_readdata1 	<= id_readdata1;
+		reg_ex_readdata2 	<= id_readdata2;
+		reg_ex_rs1       	<= id_rs1;
+		reg_ex_rs2       	<= id_rs2;
+		reg_ex_rd        	<= id_rd;
 	end
 end
 
-assign ex_PC        = reg_ex_PC;
-assign ex_pc_plus_4 = reg_ex_pc_plus_4;
-assign ex_opcode    = reg_ex_opcode;
+assign ex_PC        	= reg_ex_PC;
+assign ex_pc_plus_4 	= reg_ex_pc_plus_4;
+assign ex_pc_predicted 	= reg_ex_pc_predicted;
+assign ex_opcode    	= reg_ex_opcode;
 
 // ex control
-assign ex_branch    = reg_ex_branch;
-assign ex_aluop     = reg_ex_aluop;
-assign ex_alusrc    = reg_ex_alusrc;
-assign ex_jump      = reg_ex_jump;
-
-// mem control
-assign ex_memread   = reg_ex_memread;
-assign ex_memwrite  = reg_ex_memwrite;
-
-// wb control
-assign ex_memtoreg  = reg_ex_memtoreg;
-assign ex_regwrite  = reg_ex_regwrite;
-
-assign ex_sextimm   = reg_ex_sextimm;
-assign ex_funct7    = reg_ex_funct7;
-assign ex_funct3    = reg_ex_funct3;
-assign ex_readdata1 = reg_ex_readdata1;
-assign ex_readdata2 = reg_ex_readdata2;
-assign ex_rs1       = reg_ex_rs1;
-assign ex_rs2       = reg_ex_rs2;
-assign ex_rd        = reg_ex_rd;
+assign ex_branch    	= reg_ex_branch;
+assign ex_aluop     	= reg_ex_aluop;
+assign ex_alusrc    	= reg_ex_alusrc;
+assign ex_jump      	= reg_ex_jump;
+	
+// mem control	
+assign ex_memread   	= reg_ex_memread;
+assign ex_memwrite  	= reg_ex_memwrite;
+	
+// wb control	
+assign ex_memtoreg  	= reg_ex_memtoreg;
+assign ex_regwrite  	= reg_ex_regwrite;
+	
+assign ex_sextimm   	= reg_ex_sextimm;
+assign ex_funct7    	= reg_ex_funct7;
+assign ex_funct3    	= reg_ex_funct3;
+assign ex_readdata1 	= reg_ex_readdata1;
+assign ex_readdata2 	= reg_ex_readdata2;
+assign ex_rs1       	= reg_ex_rs1;
+assign ex_rs2       	= reg_ex_rs2;
+assign ex_rd        	= reg_ex_rd;
 
 endmodule

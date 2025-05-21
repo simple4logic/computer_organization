@@ -16,6 +16,7 @@ module ifid_reg #(
 
 	input [DATA_WIDTH-1:0] if_PC,
 	input [DATA_WIDTH-1:0] if_pc_plus_4,
+	input [DATA_WIDTH-1:0] if_pc_predicted, // for branch predictor update
 	input [DATA_WIDTH-1:0] if_instruction,
 
 	//////////////////////////////////////
@@ -23,6 +24,7 @@ module ifid_reg #(
 	//////////////////////////////////////
 	output [DATA_WIDTH-1:0] id_PC,
 	output [DATA_WIDTH-1:0] id_pc_plus_4,
+	output [DATA_WIDTH-1:0] id_pc_predicted, // for branch predictor update
 	output [DATA_WIDTH-1:0] id_instruction
 );
 
@@ -30,28 +32,33 @@ module ifid_reg #(
 
 reg [DATA_WIDTH-1:0] reg_id_PC;
 reg [DATA_WIDTH-1:0] reg_id_pc_plus_4;
+reg [DATA_WIDTH-1:0] reg_id_pc_predicted;
 reg [DATA_WIDTH-1:0] reg_id_instruction;
 
 always @(posedge clk) begin
 	if(flush) begin
 		reg_id_PC           <= 0;
 		reg_id_pc_plus_4    <= 0;
+		reg_id_pc_predicted <= 32'h0;
 		reg_id_instruction  <= 32'h0; 
 	end
 	else if (stall) begin
 		reg_id_PC           <= reg_id_PC;
 		reg_id_pc_plus_4    <= reg_id_pc_plus_4;
+		reg_id_pc_predicted <= reg_id_pc_predicted;
 		reg_id_instruction  <= reg_id_instruction;
 	end
 	else begin // normal operation
 		reg_id_PC           <= if_PC;
 		reg_id_pc_plus_4    <= if_pc_plus_4;
+		reg_id_pc_predicted <= if_pc_predicted;
 		reg_id_instruction  <= if_instruction;
 	end
 end
 
 assign id_PC           = reg_id_PC;
 assign id_pc_plus_4    = reg_id_pc_plus_4;
+assign id_pc_predicted = reg_id_pc_predicted;
 assign id_instruction  = reg_id_instruction;
 
 endmodule

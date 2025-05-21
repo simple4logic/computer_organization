@@ -26,12 +26,17 @@ module simple_cpu
 //////// IF stage ////////
 wire [DATA_WIDTH-1:0] IF_instruction;
 wire [DATA_WIDTH-1:0] IF_PC_PLUS_4;
+wire [DATA_WIDTH-1:0] IF_PC_PREDICTED;
+
+wire hit;
+wire branch_pred;
 
 //////// ID stage ////////
 // notation : XX_ : XX stage에서 "쓰는" 정보, AABB_reg 이면 BB에서 쓰이는 정보
 wire [DATA_WIDTH-1:0] ID_instruction;
 wire [DATA_WIDTH-1:0] ID_PC;
 wire [DATA_WIDTH-1:0] ID_PC_PLUS_4;
+wire [DATA_WIDTH-1:0] ID_PC_PREDICTED;
 
 // instruction fields
 wire [6:0] ID_opcode = ID_instruction[6:0];
@@ -65,6 +70,7 @@ wire stall, flush;
 wire [DATA_WIDTH-1:0] EX_PC;
 wire [DATA_WIDTH-1:0] EX_PC_PLUS_4;
 wire [DATA_WIDTH-1:0] EX_PC_TARGET;
+wire [DATA_WIDTH-1:0] EX_PC_PREDICTED;
 
 wire [6:0] EX_funct7;
 wire [2:0] EX_funct3;
@@ -96,7 +102,9 @@ wire [31:0] EX_alu_in1_fwd, EX_alu_in2_fwd; // ALU inputs after forwarding
 //////// MEM stage ////////
 wire [DATA_WIDTH-1:0] MEM_PC;
 wire [DATA_WIDTH-1:0] MEM_PC_PLUS_4;
+wire [DATA_WIDTH-1:0] MEM_PC_PREDICTED;
 wire [DATA_WIDTH-1:0] MEM_PC_TARGET;
+wire [DATA_WIDTH-1:0] MEM_RESOLVED_PC_TARGET;
 
 // control unit
 wire [1:0] 	MEM_jump;
@@ -136,33 +144,56 @@ wire [31:0] WB_write_data;
 reg [DATA_WIDTH-1:0] PC;    // program counter (32 bits)
 
 wire [DATA_WIDTH-1:0] NEXT_PC;
-wire [DATA_WIDTH-1:0] NEXT_PC_mid_out_1;
-wire [DATA_WIDTH-1:0] NEXT_PC_mid_out_2;
+wire [DATA_WIDTH-1:0] NEXT_PC_mid_out;
+wire [DATA_WIDTH-1:0] NEXT_PC_resolved;
+wire [DATA_WIDTH-1:0] branch_target;
 
 /////////////// PC selection muxes ///////////////
-mux_2x1 m_branch_mux(
-  .in1(IF_PC_PLUS_4), // PC+4
+// resolve mux for branch
+mux_2x1 m_resolve_branch_mux(
+  .in1(MEM_PC_PLUS_4), // PC+4
   .in2(MEM_PC_TARGET), // branch target
 
   .select(MEM_taken), // branch taken
 
-  .out(NEXT_PC_mid_out_1)
+  .out(NEXT_PC_mid_out)
 );
 
-mux_4x1 m_jump_mux(
-  .in1(NEXT_PC_mid_out_1),  // branch target or PC+4
+// resolve mux for jump
+mux_4x1 m_resolve_jump_mux(
+  .in1(NEXT_PC_mid_out),  // branch target or PC+4
   .in2(MEM_PC_TARGET),      // JAL
   .in3(32'b0),              // CANNOT FALL HERE
   .in4(MEM_alu_result),     // JALR
 
   .select(MEM_jump),
 
-  .out(NEXT_PC_mid_out_2)
+  .out(MEM_RESOLVED_PC_TARGET) // resolved in MEM stage
 );
 
+mux_2x1 m_predict_mux(
+  .in1(IF_PC_PLUS_4), // not taken (or miss)
+  .in2(branch_target), // taken && hit
+
+  .select(hit & total_pred & IF_instruction[6]), // check if this intruction is control flow
+
+  .out(IF_PC_PREDICTED)
+); // T, NT both are predicted 
+
+// decide to take resolve or not
+mux_2x1 m_resolve_final_mux(
+  .in1(IF_PC_PREDICTED),        // keep going (predict correct)
+  .in2(MEM_RESOLVED_PC_TARGET), // resolved target (need to flush)
+
+  .select(MEM_is_control_flow & (MEM_PC_PREDICTED != MEM_RESOLVED_PC_TARGET)),
+
+  .out(NEXT_PC_resolved)
+);
+
+// highest priority
 mux_2x1 m_stall_mux(
-  .in1(NEXT_PC_mid_out_2),  // either branch, jump, PC+4
-  .in2(PC),                 // hold PC when stall
+  .in1(NEXT_PC_resolved),   // either branch, jump, PC+4
+  .in2(PC),                // hold PC when stall
 
   .select(!flush && stall),
 
@@ -191,7 +222,6 @@ instruction_memory m_instruction_memory(
   .instruction(IF_instruction)
 );
 
-
 // for unconditional, take prediction if hit
 // for conditional, take prediction if hit & pred = 1
 branch_hardware m_branch_hardware(
@@ -200,20 +230,23 @@ branch_hardware m_branch_hardware(
 
   //// input
   // update interface (@ memory stage)
-  .update_predictor(MEM_branch), // branch instruction only
-  .update_btb(MEM_branch), // branch or jump
-  .actually_taken(MEM_taken), // actual resolved result (T, NT)
-  .resolved_pc(MEM_PC), // pc index in the table
-  .resolved_pc_target(MEM_PC_TARGET),
+  .update_predictor(MEM_branch),                // branch instruction only
+  .update_btb(MEM_branch | MEM_jump[0]),        // branch or jump
+  .actually_taken(MEM_taken),                   // actual resolved result (T, NT)
+  .resolved_pc(MEM_PC),                         // pc index in the table
+  .resolved_pc_target(MEM_RESOLVED_PC_TARGET),  // target address(either jump or branch)
 
   // access interface
-  .pc(PC),
+  .pc(PC), // current pc which i want to predict
 
   //// output
-  .hit(), // 
-  .pred(),
-  .branch_target()
+  .hit(hit), // 
+  .pred(branch_pred), // predicted taken or not
+  .branch_target(branch_target)
 );
+
+wire is_jump = IF_instruction[2] & IF_instruction[6];
+wire total_pred = branch_pred | is_jump; // always taken when jump
 
 /* forward to IF/ID stage registers */
 ifid_reg m_ifid_reg(
@@ -221,10 +254,12 @@ ifid_reg m_ifid_reg(
   .clk            (clk),
   .if_PC          (PC),
   .if_pc_plus_4   (IF_PC_PLUS_4),
+  .if_pc_predicted(IF_PC_PREDICTED),
   .if_instruction (IF_instruction),
 
   .id_PC          (ID_PC),
   .id_pc_plus_4   (ID_PC_PLUS_4),
+  .id_pc_predicted(ID_PC_PREDICTED),
   .id_instruction (ID_instruction),
 
   .flush          (flush),
@@ -242,9 +277,10 @@ hazard m_hazard(
   .ID_rs1(ID_rs1),
   .ID_rs2(ID_rs2),
   .EX_rd(EX_rd),
-  .MEM_jump(MEM_jump[0]),
   .EX_mem_read(EX_mem_read),
-  .branch_taken(MEM_taken),
+  // .MEM_jump(MEM_jump[0]),
+  // .branch_taken(MEM_taken),
+  .do_flush(MEM_is_control_flow & !MEM_is_predict_correct), // was control flow and wrong prediction
 
   .flush(flush),
   .stall(stall)
@@ -287,49 +323,51 @@ register_file m_register_file(
 /* forward to ID/EX stage registers */
 idex_reg m_idex_reg(
   // TODO: Add flush or stall signal if it is needed
-  .clk          (clk),
-  .id_PC        (ID_PC),
-  .id_pc_plus_4 (ID_PC_PLUS_4),
-  .id_opcode    (ID_opcode),
-  .id_jump      (ID_jump), // 2bit
-  .id_branch    (ID_branch),
-  .id_aluop     (ID_alu_op),
-  .id_alusrc    (ID_alu_src),
-  .id_memread   (ID_mem_read),
-  .id_memwrite  (ID_mem_write),
-  .id_memtoreg  (ID_mem_to_reg),
-  .id_regwrite  (ID_reg_write),
-  .id_sextimm   (ID_sextimm),
-  .id_funct7    (ID_funct7),
-  .id_funct3    (ID_funct3),
-  .id_readdata1 (ID_rs1_out),
-  .id_readdata2 (ID_rs2_out),
-  .id_rs1       (ID_rs1),
-  .id_rs2       (ID_rs2),
-  .id_rd        (ID_rd),
+  .clk            (clk),
+  .id_PC          (ID_PC),
+  .id_pc_plus_4   (ID_PC_PLUS_4),
+  .id_pc_predicted(ID_PC_PREDICTED),
+  .id_opcode      (ID_opcode),
+  .id_jump        (ID_jump), // 2bit
+  .id_branch      (ID_branch),
+  .id_aluop       (ID_alu_op),
+  .id_alusrc      (ID_alu_src),
+  .id_memread     (ID_mem_read),
+  .id_memwrite    (ID_mem_write),
+  .id_memtoreg    (ID_mem_to_reg),
+  .id_regwrite    (ID_reg_write),
+  .id_sextimm     (ID_sextimm),
+  .id_funct7      (ID_funct7),
+  .id_funct3      (ID_funct3),
+  .id_readdata1   (ID_rs1_out),
+  .id_readdata2   (ID_rs2_out),
+  .id_rs1         (ID_rs1),
+  .id_rs2         (ID_rs2),
+  .id_rd          (ID_rd),
 
-  .ex_PC        (EX_PC),
-  .ex_pc_plus_4 (EX_PC_PLUS_4),
-  .ex_opcode    (EX_opcode),
-  .ex_jump      (EX_jump),
-  .ex_branch    (EX_branch),
-  .ex_aluop     (EX_alu_op),
-  .ex_alusrc    (EX_alu_src),
-  .ex_memread   (EX_mem_read),
-  .ex_memwrite  (EX_mem_write),
-  .ex_memtoreg  (EX_mem_to_reg),
-  .ex_regwrite  (EX_reg_write),
-  .ex_sextimm   (EX_sextimm),
-  .ex_funct7    (EX_funct7),
-  .ex_funct3    (EX_funct3),
-  .ex_readdata1 (EX_rs1_out), // data from RF after reading
-  .ex_readdata2 (EX_rs2_out),
-  .ex_rs1       (EX_rs1),
-  .ex_rs2       (EX_rs2),
-  .ex_rd        (EX_rd),
+  .ex_PC          (EX_PC),
+  .ex_pc_plus_4   (EX_PC_PLUS_4),
+  .ex_pc_predicted(EX_PC_PREDICTED),
+  .ex_opcode      (EX_opcode),
+  .ex_jump        (EX_jump),
+  .ex_branch      (EX_branch),
+  .ex_aluop       (EX_alu_op),
+  .ex_alusrc      (EX_alu_src),
+  .ex_memread     (EX_mem_read),
+  .ex_memwrite    (EX_mem_write),
+  .ex_memtoreg    (EX_mem_to_reg),
+  .ex_regwrite    (EX_reg_write),
+  .ex_sextimm     (EX_sextimm),
+  .ex_funct7      (EX_funct7),
+  .ex_funct3      (EX_funct3),
+  .ex_readdata1   (EX_rs1_out), // data from RF after reading
+  .ex_readdata2   (EX_rs2_out),
+  .ex_rs1         (EX_rs1),
+  .ex_rs2         (EX_rs2),
+  .ex_rd          (EX_rd),
 
-  .flush        (flush),
-  .stall        (stall)
+  .flush          (flush),
+  .stall          (stall)
 );
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -437,6 +475,7 @@ exmem_reg m_exmem_reg(
   .clk            (clk),
   .ex_pc          (EX_PC),
   .ex_pc_plus_4   (EX_PC_PLUS_4),
+  .ex_pc_predicted(EX_PC_PREDICTED),
   .ex_pc_target   (EX_PC_TARGET),
   .ex_taken       (EX_taken), 
   .ex_jump        (EX_jump),
@@ -452,6 +491,7 @@ exmem_reg m_exmem_reg(
   
   .mem_pc         (MEM_PC),
   .mem_pc_plus_4  (MEM_PC_PLUS_4),
+  .mem_pc_predicted(MEM_PC_PREDICTED),
   .mem_pc_target  (MEM_PC_TARGET),
   .mem_taken      (MEM_taken), 
   .mem_jump       (MEM_jump),
@@ -471,6 +511,8 @@ exmem_reg m_exmem_reg(
 //////////////////////////////////////////////////////////////////////////////////
 // Memory (MEM) 
 //////////////////////////////////////////////////////////////////////////////////
+wire MEM_is_control_flow = MEM_branch | (MEM_jump != 2'b00); // jump or branch
+wire MEM_is_predict_correct = (MEM_PC_PREDICTED == MEM_RESOLVED_PC_TARGET);
 
 /* m_data_memory : main memory module */
 data_memory m_data_memory(
@@ -526,6 +568,9 @@ mux_4x1 m_write_data_mux(
 // Hardware Counters
 //////////////////////////////////////////////////////////////////////////////////
 wire [31:0] CORE_CYCLE;
+wire [31:0] NUM_COND_BRANCHES;
+wire [31:0] NUM_UNCOND_BRANCHES;
+wire [31:0] BP_CORRECT;
 
 hardware_counter m_core_cycle(
   .clk(clk),
@@ -533,6 +578,30 @@ hardware_counter m_core_cycle(
   .cond(1'b1),
 
   .counter(CORE_CYCLE)
+);
+
+hardware_counter m_num_cond_branches(
+  .clk(clk),
+  .rstn(rstn),
+  .cond(MEM_branch),
+
+  .counter(NUM_COND_BRANCHES)
+);
+
+hardware_counter m_num_uncond_branches(
+  .clk(clk),
+  .rstn(rstn),
+  .cond(MEM_jump[0]),
+
+  .counter(NUM_UNCOND_BRANCHES)
+);
+
+hardware_counter m_bp_correct(
+  .clk(clk),
+  .rstn(rstn),
+  .cond(MEM_is_control_flow & MEM_is_predict_correct),
+
+  .counter(BP_CORRECT)
 );
 
 endmodule

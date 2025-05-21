@@ -9,9 +9,10 @@ module hazard (
     input [4:0] ID_rs1, // Source register 1
     input [4:0] ID_rs2, // Source register 2
     input [4:0] EX_rd, // EX inst destination register
-    input MEM_jump,
     input EX_mem_read, // Memory read signal
-    input branch_taken, // Branch taken signal
+    // input MEM_jump,
+    // input branch_taken, // Branch taken signal
+    input do_flush,
 
     output stall,
     output flush
@@ -23,6 +24,7 @@ assign stall =  (EX_mem_read && (ID_rs1 != 0) && (ID_rs1 == EX_rd)) ||
                 (EX_mem_read && (ID_rs2 != 0) && (ID_rs2 == EX_rd));
 
 // flush logic
-assign flush = branch_taken | MEM_jump; // either branch taken or jump -> flush
+// assign flush = branch_taken | MEM_jump; // either branch taken or jump -> flush
+assign flush = do_flush; // either branch taken or jump -> flush
 
 endmodule

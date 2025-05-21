@@ -35,6 +35,10 @@ reg [DATA_WIDTH-1:0] datamem [0:NUM_ENTRIES-1];
 wire [INDEX_BITS-1:0] access_idx = pc[INDEX_BITS+1:2];
 wire [TAG_BITS-1:0]   access_tag = pc[DATA_WIDTH-1:INDEX_BITS+2];
 
+// tag and index for update
+wire [INDEX_BITS-1:0] update_idx = resolved_pc[INDEX_BITS+1:2];
+wire [TAG_BITS-1:0]   update_tag = resolved_pc[DATA_WIDTH-1:INDEX_BITS+2];
+
 // reset & update BTB when 'update' is true
 integer i;
 always @(posedge clk or negedge rstn) begin
@@ -46,9 +50,9 @@ always @(posedge clk or negedge rstn) begin
 		end
 	end 
 	else if (update) begin
-		valid[access_idx]   <= 1'b1;
-		tagmem[access_idx]  <= access_tag;
-		datamem[access_idx] <= resolved_pc_target;
+		valid[update_idx]   <= 1'b1;
+		tagmem[update_idx]  <= update_tag;
+		datamem[update_idx] <= resolved_pc_target;
 	end
 end
 
@@ -60,7 +64,7 @@ always @(*) begin
 	end 
 	else begin
 		hit            = 1'b0;
-		target_address = {DATA_WIDTH{1'b0}};
+		target_address = {DATA_WIDTH{1'b0}}; // will not be used
 	end
 end
 
