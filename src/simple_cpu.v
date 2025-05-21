@@ -135,12 +135,38 @@ wire [31:0] WB_write_data;
 reg [DATA_WIDTH-1:0] PC;    // program counter (32 bits)
 
 wire [DATA_WIDTH-1:0] NEXT_PC;
+wire [DATA_WIDTH-1:0] NEXT_PC_mid_out_1;
+wire [DATA_WIDTH-1:0] NEXT_PC_mid_out_2;
 
-assign NEXT_PC =
-     ((MEM_jump == 2'b00) && MEM_taken) ? MEM_PC_TARGET   // 1) branch taken
-   : (MEM_jump == 2'b01)                ? MEM_PC_TARGET   // 2) JAL
-   : (MEM_jump == 2'b11)                ? MEM_alu_result // 3) JALR
-   : IF_PC_PLUS_4;                                  // 4) default: PC+4
+/////////////// PC selection muxes ///////////////
+mux_2x1 m_branch_mux(
+  .in1(IF_PC_PLUS_4), // PC+4
+  .in2(MEM_PC_TARGET), // branch target
+
+  .select(MEM_taken), // branch taken
+
+  .out(NEXT_PC_mid_out_1)
+);
+
+mux_4x1 m_jump_mux(
+  .in1(NEXT_PC_mid_out_1),  // branch target or PC+4
+  .in2(MEM_PC_TARGET),      // JAL
+  .in3(32'b0),              // CANNOT FALL HERE
+  .in4(MEM_alu_result),     // JALR
+
+  .select(MEM_jump),
+
+  .out(NEXT_PC_mid_out_2)
+);
+
+mux_2x1 m_stall_mux(
+  .in1(NEXT_PC_mid_out_2),  // either branch, jump, PC+4
+  .in2(PC),                 // hold PC when stall
+
+  .select(!flush && stall),
+
+  .out(NEXT_PC)
+);
 
 /* m_next_pc_adder */
 adder m_pc_plus_4_adder(
@@ -154,8 +180,7 @@ always @(posedge clk) begin
   if (rstn == 1'b0) begin
     PC <= 32'h00000000;
   end
-  else if (!flush && stall) PC <= PC; // keep PC when stall
-  else                      PC <= NEXT_PC;
+  else PC <= NEXT_PC;
 end
 
 /* instruction: read current instruction from inst mem */
@@ -194,7 +219,7 @@ hazard m_hazard(
   .EX_rd(EX_rd),
   .EX_mem_read(EX_mem_read),
   .branch_taken(MEM_taken),
-  // 지금 0x94 jal 에서 안뛰고 잇음 내껀
+  .MEM_jump(MEM_jump[0]),
 
   .flush(flush),
   .stall(stall)
@@ -300,8 +325,6 @@ branch_control m_branch_control(
   .taken  (EX_taken)
 );
 
-wire EX_taken_all = EX_taken | EX_jump[0];
-
 /* alu control : generates alu_func signal */
 alu_control m_alu_control(
   .alu_op   (EX_alu_op),
@@ -335,7 +358,7 @@ forwarding m_forwarding(
   .forward_b(forward_b)
 );
 
-mux_4x1 m_forward_a_mux(
+mux_3x1 m_forward_a_mux(
   .in1(EX_rs1_out),
   .in2(MEM_alu_result), //alu forwarding from EX/MEM stage
   .in3(WB_write_data),  //alu forwarding from MEM/WB stage
@@ -345,7 +368,7 @@ mux_4x1 m_forward_a_mux(
   .out(EX_alu_in1_fwd)
 );
 
-mux_4x1 m_forward_b_mux(
+mux_3x1 m_forward_b_mux(
   .in1(EX_rs2_out),
   .in2(MEM_alu_result),
   .in3(WB_write_data),
@@ -371,7 +394,7 @@ exmem_reg m_exmem_reg(
   .clk            (clk),
   .ex_pc_plus_4   (EX_PC_PLUS_4),
   .ex_pc_target   (EX_PC_TARGET),
-  .ex_taken       (EX_taken_all), 
+  .ex_taken       (EX_taken), 
   .ex_jump        (EX_jump),
   .ex_memread     (EX_mem_read),
   .ex_memwrite    (EX_mem_write),
