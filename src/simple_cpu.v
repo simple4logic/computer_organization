@@ -94,6 +94,7 @@ wire [1:0] forward_a, forward_b; // forwarding signals
 wire [31:0] EX_alu_in1_fwd, EX_alu_in2_fwd; // ALU inputs after forwarding
 
 //////// MEM stage ////////
+wire [DATA_WIDTH-1:0] MEM_PC;
 wire [DATA_WIDTH-1:0] MEM_PC_PLUS_4;
 wire [DATA_WIDTH-1:0] MEM_PC_TARGET;
 
@@ -135,13 +136,38 @@ wire [31:0] WB_write_data;
 reg [DATA_WIDTH-1:0] PC;    // program counter (32 bits)
 
 wire [DATA_WIDTH-1:0] NEXT_PC;
+wire [DATA_WIDTH-1:0] NEXT_PC_mid_out_1;
+wire [DATA_WIDTH-1:0] NEXT_PC_mid_out_2;
 
-assign NEXT_PC =
-     ((MEM_jump == 2'b00) && MEM_taken) ? MEM_PC_TARGET   // 1) branch taken
-   : (MEM_jump == 2'b01)                ? MEM_PC_TARGET   // 2) JAL
-   : (MEM_jump == 2'b11)                ? MEM_alu_result  // 3) JALR
-   : (!flush && stall)                  ? PC              // 4) stall 
-   : IF_PC_PLUS_4;                                        // 5) default: PC+4
+/////////////// PC selection muxes ///////////////
+mux_2x1 m_branch_mux(
+  .in1(IF_PC_PLUS_4), // PC+4
+  .in2(MEM_PC_TARGET), // branch target
+
+  .select(MEM_taken), // branch taken
+
+  .out(NEXT_PC_mid_out_1)
+);
+
+mux_4x1 m_jump_mux(
+  .in1(NEXT_PC_mid_out_1),  // branch target or PC+4
+  .in2(MEM_PC_TARGET),      // JAL
+  .in3(32'b0),              // CANNOT FALL HERE
+  .in4(MEM_alu_result),     // JALR
+
+  .select(MEM_jump),
+
+  .out(NEXT_PC_mid_out_2)
+);
+
+mux_2x1 m_stall_mux(
+  .in1(NEXT_PC_mid_out_2),  // either branch, jump, PC+4
+  .in2(PC),                 // hold PC when stall
+
+  .select(!flush && stall),
+
+  .out(NEXT_PC)
+);
 
 /* m_next_pc_adder */
 adder m_pc_plus_4_adder(
@@ -163,6 +189,30 @@ instruction_memory m_instruction_memory(
   .address    (PC),
 
   .instruction(IF_instruction)
+);
+
+
+// for unconditional, take prediction if hit
+// for conditional, take prediction if hit & pred = 1
+branch_hardware m_branch_hardware(
+  .clk(clk),
+  .rstn(rstn),
+
+  //// input
+  // update interface (@ memory stage)
+  .update_predictor(MEM_branch), // branch instruction only
+  .update_btb(MEM_branch), // branch or jump
+  .actually_taken(MEM_taken), // actual resolved result (T, NT)
+  .resolved_pc(MEM_PC), // pc index in the table
+  .resolved_pc_target(MEM_PC_TARGET),
+
+  // access interface
+  .pc(PC),
+
+  //// output
+  .hit(), // 
+  .pred(),
+  .branch_target()
 );
 
 /* forward to IF/ID stage registers */
@@ -192,6 +242,7 @@ hazard m_hazard(
   .ID_rs1(ID_rs1),
   .ID_rs2(ID_rs2),
   .EX_rd(EX_rd),
+  .MEM_jump(MEM_jump[0]),
   .EX_mem_read(EX_mem_read),
   .branch_taken(MEM_taken),
 
@@ -306,8 +357,6 @@ branch_control m_branch_control(
   .taken  (EX_taken)
 );
 
-wire EX_taken_all = EX_taken | EX_jump[0];
-
 /* alu control : generates alu_func signal */
 alu_control m_alu_control(
   .alu_op   (EX_alu_op),
@@ -386,10 +435,12 @@ mux_2x1 m_alu_src_mux(
 exmem_reg m_exmem_reg(
   // TODO: Add flush or stall signal if it is needed
   .clk            (clk),
+  .ex_pc          (EX_PC),
   .ex_pc_plus_4   (EX_PC_PLUS_4),
   .ex_pc_target   (EX_PC_TARGET),
-  .ex_taken       (EX_taken_all), 
+  .ex_taken       (EX_taken), 
   .ex_jump        (EX_jump),
+  .ex_branch      (EX_branch),
   .ex_memread     (EX_mem_read),
   .ex_memwrite    (EX_mem_write),
   .ex_memtoreg    (EX_mem_to_reg),
@@ -399,10 +450,12 @@ exmem_reg m_exmem_reg(
   .ex_funct3      (EX_funct3),
   .ex_rd          (EX_rd),
   
+  .mem_pc         (MEM_PC),
   .mem_pc_plus_4  (MEM_PC_PLUS_4),
   .mem_pc_target  (MEM_PC_TARGET),
   .mem_taken      (MEM_taken), 
   .mem_jump       (MEM_jump),
+  .mem_branch     (MEM_branch),
   .mem_memread    (MEM_mem_read),
   .mem_memwrite   (MEM_mem_write),
   .mem_memtoreg   (MEM_mem_to_reg),
