@@ -48,6 +48,21 @@ module branch_hardware #(
 
 `ifdef PERCEPTRON
   // TODO: Instantiate the Perceptron branch predictor
+  perceptron m_perceptron(
+	.clk(clk),
+	.rstn(rstn),
+
+	// update interface
+	.update(update_predictor),
+	.actually_taken(actually_taken),
+	.resolved_pc(resolved_pc),
+
+	// access interface
+	.pc(pc),
+
+	// output
+	.pred(pred_o)
+  );
 `endif
 
 wire hit_o;
