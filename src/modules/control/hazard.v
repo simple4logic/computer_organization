@@ -5,14 +5,16 @@
 // TODO: declare propoer input and output ports and implement the
 // hazard detection unit
 
-module hazard (
+module hazard #(
+    parameter DATA_WIDTH = 32
+)(
     input [4:0] ID_rs1, // Source register 1
     input [4:0] ID_rs2, // Source register 2
     input [4:0] EX_rd, // EX inst destination register
     input EX_mem_read, // Memory read signal
-    // input MEM_jump,
-    // input branch_taken, // Branch taken signal
-    input do_flush,
+    input MEM_is_control_flow,
+    input MEM_is_predict_correct,
+
 
     output stall,
     output flush
@@ -24,7 +26,8 @@ assign stall =  (EX_mem_read && (ID_rs1 != 0) && (ID_rs1 == EX_rd)) ||
                 (EX_mem_read && (ID_rs2 != 0) && (ID_rs2 == EX_rd));
 
 // flush logic
-// assign flush = branch_taken | MEM_jump; // either branch taken or jump -> flush
-assign flush = do_flush; // either branch taken or jump -> flush
+// when jump -> target wrong
+// when branch -> target wrong or prediction wrong
+assign flush = MEM_is_control_flow & !MEM_is_predict_correct; // jump but wrong target
 
 endmodule

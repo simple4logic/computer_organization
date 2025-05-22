@@ -15,6 +15,7 @@ module exmem_reg #(
 	input [DATA_WIDTH-1:0] ex_pc,
 	input [DATA_WIDTH-1:0] ex_pc_plus_4,
 	input [DATA_WIDTH-1:0] ex_pc_predicted, // for branch predictor update
+	input ex_branch_pred,
 	input [DATA_WIDTH-1:0] ex_pc_target,
 	input ex_taken,
 
@@ -39,6 +40,7 @@ module exmem_reg #(
 	output [DATA_WIDTH-1:0] mem_pc,
 	output [DATA_WIDTH-1:0] mem_pc_plus_4,
 	output [DATA_WIDTH-1:0] mem_pc_predicted, // for branch predictor update
+	output mem_branch_pred,
 	output [DATA_WIDTH-1:0] mem_pc_target,
 	output mem_taken,
 
@@ -62,6 +64,7 @@ module exmem_reg #(
 reg [DATA_WIDTH-1:0] reg_mem_pc;
 reg [DATA_WIDTH-1:0] reg_mem_pc_plus_4;
 reg [DATA_WIDTH-1:0] reg_mem_pc_predicted;
+reg reg_mem_branch_pred;
 reg [DATA_WIDTH-1:0] reg_mem_pc_target;
 reg reg_mem_taken;
 
@@ -85,6 +88,7 @@ always @(posedge clk) begin
 		reg_mem_pc		 	<= 0;
 		reg_mem_pc_plus_4 	<= 0;
 		reg_mem_pc_predicted<= 0;
+		reg_mem_branch_pred <= 0;
 		reg_mem_pc_target 	<= 0;
 		reg_mem_taken     	<= 0;
 
@@ -107,6 +111,7 @@ always @(posedge clk) begin
 		reg_mem_pc		 	<= ex_pc;
 		reg_mem_pc_plus_4 	<= ex_pc_plus_4;
 		reg_mem_pc_predicted<= ex_pc_predicted;
+		reg_mem_branch_pred <= ex_branch_pred;
 		reg_mem_pc_target 	<= ex_pc_target;
 		reg_mem_taken     	<= ex_taken;
 
@@ -130,6 +135,7 @@ end
 assign mem_pc    		= reg_mem_pc;
 assign mem_pc_plus_4    = reg_mem_pc_plus_4;
 assign mem_pc_predicted = reg_mem_pc_predicted;
+assign mem_branch_pred  = reg_mem_branch_pred;
 assign mem_pc_target    = reg_mem_pc_target;
 assign mem_taken        = reg_mem_taken;
 

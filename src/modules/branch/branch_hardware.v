@@ -54,17 +54,10 @@ wire hit_o;
 wire pred_o;
 wire [DATA_WIDTH-1:0] branch_target_o;
 
-always @(posedge clk or negedge rstn) begin
-	if (!rstn) begin
-		hit <= 1'b0;
-		pred <= 1'b0;
-		branch_target <= {DATA_WIDTH{1'b0}};
-	end 
-	else begin
-		hit <= hit_o;
-		pred <= pred_o;
-		branch_target <= branch_target_o;
-	end
+always @(*) begin
+	hit = hit_o;
+	pred = pred_o;
+	branch_target = branch_target_o;
 end
 
 branch_target_buffer m_BTB (

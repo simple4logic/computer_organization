@@ -17,6 +17,7 @@ module idex_reg #(
 	input [DATA_WIDTH-1:0] id_PC,
 	input [DATA_WIDTH-1:0] id_pc_plus_4,
 	input [DATA_WIDTH-1:0] id_pc_predicted,
+	input id_branch_pred,
 	input [6:0] id_opcode,
 
 	// ex control
@@ -48,6 +49,7 @@ module idex_reg #(
 	output [DATA_WIDTH-1:0] ex_PC,
 	output [DATA_WIDTH-1:0] ex_pc_plus_4,
 	output [DATA_WIDTH-1:0] ex_pc_predicted,
+	output ex_branch_pred,
 	output [6:0] ex_opcode,
 
 	// ex control
@@ -79,6 +81,7 @@ module idex_reg #(
 reg [DATA_WIDTH-1:0] reg_ex_PC;
 reg [DATA_WIDTH-1:0] reg_ex_pc_plus_4;
 reg [DATA_WIDTH-1:0] reg_ex_pc_predicted;
+reg reg_ex_branch_pred;
 reg [6:0] reg_ex_opcode;
 
 // ex control
@@ -106,10 +109,11 @@ reg [4:0] reg_ex_rd;
 
 always @(posedge clk) begin
 	if(flush) begin
-		reg_ex_PC        <= 0;
-		reg_ex_pc_plus_4 <= 0;
+		reg_ex_PC        	<= 0;
+		reg_ex_pc_plus_4 	<= 0;
 		reg_ex_pc_predicted <= 0;
-		reg_ex_opcode	 <= 0; // remove when stall?? TODO
+		reg_ex_branch_pred 	<= 0;
+		reg_ex_opcode	 	<= 0; // remove when stall?? TODO
 
 		// ex control
 		reg_ex_branch    <= 0;
@@ -153,6 +157,7 @@ always @(posedge clk) begin
 		reg_ex_PC        	<= id_PC;
 		reg_ex_pc_plus_4 	<= id_pc_plus_4;
 		reg_ex_pc_predicted <= id_pc_predicted;
+		reg_ex_branch_pred 	<= id_branch_pred;
 		reg_ex_opcode	 	<= id_opcode;
 
 		// ex control
@@ -183,6 +188,7 @@ end
 assign ex_PC        	= reg_ex_PC;
 assign ex_pc_plus_4 	= reg_ex_pc_plus_4;
 assign ex_pc_predicted 	= reg_ex_pc_predicted;
+assign ex_branch_pred 	= reg_ex_branch_pred;
 assign ex_opcode    	= reg_ex_opcode;
 
 // ex control

@@ -32,6 +32,7 @@ reg                  valid   [0:NUM_ENTRIES-1];
 reg [TAG_BITS-1:0]   tagmem  [0:NUM_ENTRIES-1];
 reg [DATA_WIDTH-1:0] datamem [0:NUM_ENTRIES-1];
 
+// tag and index for access
 wire [INDEX_BITS-1:0] access_idx = pc[INDEX_BITS+1:2];
 wire [TAG_BITS-1:0]   access_tag = pc[DATA_WIDTH-1:INDEX_BITS+2];
 
