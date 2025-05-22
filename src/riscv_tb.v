@@ -54,10 +54,13 @@ initial begin
   $display($time, " NUM_COND_BRANCHES: %d", my_cpu.NUM_COND_BRANCHES);
   $display($time, " NUM_UNCOND_BRANCHES: %d", my_cpu.NUM_UNCOND_BRANCHES);
 
+  /*
+  $display($time, " BP_CORRECT: %d", my_cpu.NUM_COND_BRANCHES - my_cpu.BP_INCORRECT);
+  $display($time, " BP_INCORRECT: %d", my_cpu.BP_INCORRECT);
+  */
+
   $display($time, " BP_CORRECT: %d", my_cpu.BP_CORRECT);
   $display($time, " BP_INCORRECT: %d", my_cpu.NUM_COND_BRANCHES - my_cpu.BP_CORRECT);
-  /*
-  */
 
   $finish;
 end

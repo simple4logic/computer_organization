@@ -121,6 +121,7 @@ wire 		MEM_reg_write;
 
 wire MEM_taken;
 wire [31:0] MEM_alu_result;
+wire [31:0] MEM_alu_result_fwd;
 wire [2:0] 	MEM_funct3;
 wire [4:0] 	MEM_rd;
 wire [31:0] MEM_write_data;
@@ -439,9 +440,19 @@ forwarding m_forwarding(
   .forward_b(forward_b)
 );
 
+// need to save return address when jump
+mux_2x1 m_jump_return_mux(
+  .in1(MEM_alu_result),
+  .in2(MEM_PC_PLUS_4), //alu forwarding from EX/MEM stage
+
+  .select(MEM_jump[0]),
+
+  .out(MEM_alu_result_fwd)
+);
+
 mux_3x1 m_forward_a_mux(
   .in1(EX_rs1_out),
-  .in2(MEM_alu_result), //alu forwarding from EX/MEM stage
+  .in2(MEM_alu_result_fwd), //alu forwarding from EX/MEM stage
   .in3(WB_write_data),  //alu forwarding from MEM/WB stage
 
   .select(forward_a),
@@ -451,7 +462,7 @@ mux_3x1 m_forward_a_mux(
 
 mux_3x1 m_forward_b_mux(
   .in1(EX_rs2_out),
-  .in2(MEM_alu_result),
+  .in2(MEM_alu_result_fwd),
   .in3(WB_write_data),
 
   .select(forward_b),
@@ -504,7 +515,7 @@ exmem_reg m_exmem_reg(
   .mem_pc         (MEM_PC),
   .mem_pc_plus_4  (MEM_PC_PLUS_4),
   .mem_pc_predicted(MEM_PC_PREDICTED),
-  .mem_branch_pred(MEM_branch_pred),
+  .mem_branch_pred(MEM_branch_pred), // (hit & branch_pred) || is_jump
   .mem_pc_target  (MEM_PC_TARGET),
   .mem_taken      (MEM_taken), 
   .mem_jump       (MEM_jump),
@@ -524,9 +535,11 @@ exmem_reg m_exmem_reg(
 //////////////////////////////////////////////////////////////////////////////////
 // Memory (MEM) 
 //////////////////////////////////////////////////////////////////////////////////
-wire MEM_is_control_flow = MEM_branch | (MEM_jump != 2'b00); // jump or branch
-// wire MEM_is_target_correct = (MEM_PC_PREDICTED == MEM_RESOLVED_PC_TARGET);
-wire MEM_is_predict_correct = (MEM_PC_PREDICTED == MEM_RESOLVED_PC_TARGET) & (MEM_taken == MEM_branch_pred);
+wire MEM_is_control_flow = MEM_branch | (MEM_jump[0]); // jump or branch
+// when jump, predict always taken
+// when branch, predict taken if branch_pred = 1 & hit
+wire MEM_is_predict_correct = (MEM_PC_PREDICTED == MEM_RESOLVED_PC_TARGET) 
+                              & (((MEM_branch & MEM_taken) | (MEM_jump[0])) == MEM_branch_pred);
 
 /* m_data_memory : main memory module */
 data_memory m_data_memory(
@@ -610,10 +623,14 @@ hardware_counter m_num_uncond_branches(
   .counter(NUM_UNCOND_BRANCHES)
 );
 
+// target should be the same
+// "only" branch instruction
+wire cond_pred_correct = MEM_branch & (MEM_PC_PREDICTED == MEM_RESOLVED_PC_TARGET) 
+                          & ((MEM_branch & MEM_taken)== MEM_branch_pred);
 hardware_counter m_bp_correct(
   .clk(clk),
   .rstn(rstn),
-  .cond(MEM_is_control_flow & MEM_is_predict_correct),
+  .cond(cond_pred_correct),
 
   .counter(BP_CORRECT)
 );

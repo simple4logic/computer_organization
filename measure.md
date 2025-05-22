@@ -2,75 +2,182 @@
 
 ## baseline
 
-```
-[*] ----- Starting test bst_array -----
-[*] Your register values should be
-[0, 136, 10380, 0, 0, 0, 1532, 0, 0, 0, 132, 1532, 124, 473, 1780, 126, 99, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1132, 0, 0, 0]       
-[*] Your verilog register values are
-[0, 136, 10380, 0, 0, 0, 1532, 0, 0, 0, 132, 1532, 124, 473, 1780, 126, 99, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1132, 0, 0, 0]       
+```md
+[*] ----- Starting test bst_array -----       
 [Passed]
 [*] ----- Hardware counter stats -----
 [*] CORE_CYCLE: 10060
 
 
 [*] ----- Starting test fibo -----
-[*] Your register values should be
-[0, 136, 10000, 0, 0, 0, 0, 0, 0, 0, 55, 2, 1, 2, 1, 2, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[*] Your verilog register values are
-[0, 136, 10000, 0, 0, 0, 0, 0, 0, 0, 55, 2, 1, 2, 1, 2, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 [Passed]
 [*] ----- Hardware counter stats -----
 [*] CORE_CYCLE: 871
 
 
 [*] ----- Starting test matmul -----
-[*] Your register values should be
-[0, 136, 10244, 0, 0, 0, 0, 0, 0, 0, 36, 0, 128, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[*] Your verilog register values are
-[0, 136, 10244, 0, 0, 0, 0, 0, 0, 0, 36, 0, 128, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 [Passed]
 [*] ----- Hardware counter stats -----
 [*] CORE_CYCLE: 22431
 
 
 [*] ----- Starting test prime_fact -----
-[*] Your register values should be
-[0, 136, 10016, 0, 0, 508, 0, 0, 0, 0, 1, 0, 128, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[*] Your verilog register values are
-[0, 136, 10016, 0, 0, 508, 0, 0, 0, 0, 1, 0, 128, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 [Passed]
 [*] ----- Hardware counter stats -----
 [*] CORE_CYCLE: 18884
 
 
-[*] ----- Starting test quicksort -----
-[*] Your register values should be
-[0, 136, 10740, 0, 0, 0, 2272, 0, 0, 0, 0, 255, 250, 1013, 252, 1012, 1012, 1012, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2276, 0, 0, 0]     
-[*] Your verilog register values are
-[0, 136, 10740, 0, 0, 0, 2272, 0, 0, 0, 0, 255, 250, 1013, 252, 1012, 1012, 1012, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2276, 0, 0, 0]     
+[*] ----- Starting test quicksort ----- 
 [Passed]
 [*] ----- Hardware counter stats -----
 [*] CORE_CYCLE: 34502
 
 
 [*] ----- Starting test spmv -----
-[*] Your register values should be
-[0, 136, 26288, 0, 0, 0, 0, 0, 0, 0, 4083, 0, 16, 1, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[*] Your verilog register values are
-[0, 136, 26288, 0, 0, 0, 0, 0, 0, 0, 4083, 0, 16, 1, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 [Passed]
 [*] ----- Hardware counter stats -----
 [*] CORE_CYCLE: 42430
 
 
 [*] ----- Starting test spconv -----
-[*] Your register values should be
-[0, 136, 26208, 0, 0, 0, 0, 0, 0, 0, 3213, 0, 18, 0, 0, 62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-[*] Your verilog register values are
-[0, 136, 26208, 0, 0, 0, 0, 0, 0, 0, 3213, 0, 18, 0, 0, 62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 [Passed]
 [*] ----- Hardware counter stats -----
 [*] CORE_CYCLE: 249824
 ```
 
 ## gshare
+
+```md
+[*] ----- Starting test bst_array -----
+[Passed]
+[*] ----- Hardware counter stats -----
+[*] CORE_CYCLE: 8266
+[*] NUM_COND_BRANCHES: 1942
+[*] NUM_UNCOND_BRANCHES: 103
+[*] BP_CORRECT: 1229
+[*] BP_INCORRECT: 713
+
+
+[*] ----- Starting test fibo -----
+[Passed]
+[*] ----- Hardware counter stats -----
+[*] CORE_CYCLE: 856
+[*] NUM_COND_BRANCHES: 200
+[*] NUM_UNCOND_BRANCHES: 6
+[*] BP_CORRECT: 142
+[*] BP_INCORRECT: 58
+
+
+[*] ----- Starting test matmul -----
+[Passed]
+[*] ----- Hardware counter stats -----
+[*] CORE_CYCLE: 15789
+[*] NUM_COND_BRANCHES: 3272
+[*] NUM_UNCOND_BRANCHES: 1029
+[*] BP_CORRECT: 2609
+[*] BP_INCORRECT: 663
+
+
+[*] ----- Starting test prime_fact ----- 
+[Passed]
+[*] ----- Hardware counter stats -----
+[*] CORE_CYCLE: 13886
+[*] NUM_COND_BRANCHES: 4207
+[*] NUM_UNCOND_BRANCHES: 1035
+[*] BP_CORRECT: 3348
+[*] BP_INCORRECT: 859
+
+
+[*] ----- Starting test quicksort -----
+[Passed]
+[*] ----- Hardware counter stats -----
+[*] CORE_CYCLE: 29765
+[*] NUM_COND_BRANCHES: 5488
+[*] NUM_UNCOND_BRANCHES: 668
+[*] BP_CORRECT: 3755
+[*] BP_INCORRECT: 1733
+
+
+[*] ----- Starting test spmv -----
+[Passed]
+[*] ----- Hardware counter stats -----
+[*] CORE_CYCLE: 41944
+[*] NUM_COND_BRANCHES: 8302
+[*] NUM_UNCOND_BRANCHES: 94
+[*] BP_CORRECT: 4136
+[*] BP_INCORRECT: 4166
+
+
+[*] ----- Starting test spconv -----
+[Passed]
+[*] ----- Hardware counter stats -----
+[*] CORE_CYCLE: 198206
+[*] NUM_COND_BRANCHES: 36569
+[*] NUM_UNCOND_BRANCHES: 11424
+[*] BP_CORRECT: 26436
+[*] BP_INCORRECT: 10133
+
+```
+
+## perceptron
+
+```md
+[*] ----- Starting test bst_array -----
+[Passed]
+[*] ----- Hardware counter stats -----
+[*] CORE_CYCLE: 7933
+[*] NUM_COND_BRANCHES: 1942
+[*] NUM_UNCOND_BRANCHES: 103
+[*] BP_CORRECT: 1340
+[*] BP_INCORRECT: 602
+
+
+[*] ----- Starting test fibo -----
+[Passed]
+[*] ----- Hardware counter stats -----
+[*] CORE_CYCLE: 832
+[*] NUM_COND_BRANCHES: 200
+[*] NUM_UNCOND_BRANCHES: 6
+[*] BP_CORRECT: 150
+[*] BP_INCORRECT: 50
+
+
+[*] ----- Starting test matmul -----  
+[Passed]
+[*] ----- Hardware counter stats -----
+[*] CORE_CYCLE: 15291
+[*] NUM_COND_BRANCHES: 3272
+[*] NUM_UNCOND_BRANCHES: 1029
+[*] BP_CORRECT: 2775
+[*] BP_INCORRECT: 497
+
+
+[*] ----- Starting test prime_fact ----- 
+[Passed]
+[*] ----- Hardware counter stats -----
+[*] CORE_CYCLE: 13250
+[*] NUM_COND_BRANCHES: 4207
+[*] NUM_UNCOND_BRANCHES: 1035
+[*] BP_CORRECT: 3560
+[*] BP_INCORRECT: 647
+
+
+[*] ----- Starting test quicksort -----
+[Passed]
+[*] ----- Hardware counter stats -----
+[*] CORE_CYCLE: 29516
+[*] NUM_COND_BRANCHES: 5488
+[*] NUM_UNCOND_BRANCHES: 668
+[*] BP_CORRECT: 3838
+[*] BP_INCORRECT: 1650
+
+
+[*] ----- Starting test spconv -----
+[Passed]
+[*] ----- Hardware counter stats -----
+[*] CORE_CYCLE: 191375
+[*] NUM_COND_BRANCHES: 36569
+[*] NUM_UNCOND_BRANCHES: 11424
+[*] BP_CORRECT: 30150
+[*] BP_INCORRECT: 6419
+```

@@ -27,6 +27,10 @@ module branch_hardware #(
 	output reg [DATA_WIDTH-1:0] branch_target  // branch target address for a hit
 );
 
+wire hit_o;
+wire pred_o;
+wire [DATA_WIDTH-1:0] branch_target_o;
+
 `ifdef GSHARE
   // TODO: Instantiate the Gshare branch predictor
   gshare m_gshare (
@@ -65,16 +69,6 @@ module branch_hardware #(
   );
 `endif
 
-wire hit_o;
-wire pred_o;
-wire [DATA_WIDTH-1:0] branch_target_o;
-
-always @(*) begin
-	hit = hit_o;
-	pred = pred_o;
-	branch_target = branch_target_o;
-end
-
 branch_target_buffer m_BTB (
 	.clk(clk),
 	.rstn(rstn),
@@ -92,5 +86,10 @@ branch_target_buffer m_BTB (
 	.target_address(branch_target_o)
 );
 
+always @(*) begin
+	hit = hit_o;
+	pred = pred_o;
+	branch_target = branch_target_o;
+end
 
 endmodule
