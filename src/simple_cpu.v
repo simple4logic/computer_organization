@@ -263,7 +263,7 @@ ifid_reg m_ifid_reg(
   .if_PC          (PC),
   .if_pc_plus_4   (IF_PC_PLUS_4),
   .if_pc_predicted(IF_PC_PREDICTED),
-  .if_branch_pred (branch_pred | IF_is_jump), // pred = 1 when bp result is taken or JUMP
+  .if_branch_pred ((branch_pred & hit) | IF_is_jump), // pred = 1 when bp result is taken or JUMP
   .if_instruction (IF_instruction),
 
   .id_PC          (ID_PC),
@@ -525,6 +525,7 @@ exmem_reg m_exmem_reg(
 // Memory (MEM) 
 //////////////////////////////////////////////////////////////////////////////////
 wire MEM_is_control_flow = MEM_branch | (MEM_jump != 2'b00); // jump or branch
+// wire MEM_is_target_correct = (MEM_PC_PREDICTED == MEM_RESOLVED_PC_TARGET);
 wire MEM_is_predict_correct = (MEM_PC_PREDICTED == MEM_RESOLVED_PC_TARGET) & (MEM_taken == MEM_branch_pred);
 
 /* m_data_memory : main memory module */
@@ -616,5 +617,15 @@ hardware_counter m_bp_correct(
 
   .counter(BP_CORRECT)
 );
+
+/*
+wire [31:0] BP_INCORRECT;
+hardware_counter m_bp_correct(
+  .clk(clk),
+  .rstn(rstn),
+  .cond(flush),
+  .counter(BP_INCORRECT)
+);
+*/
 
 endmodule
