@@ -28,7 +28,7 @@ module branch_hardware #(
 );
 
 wire hit_o;
-wire pred_o;
+wire pred_o = 1'b0;
 wire [DATA_WIDTH-1:0] branch_target_o;
 
 `ifdef GSHARE
