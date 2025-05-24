@@ -67,12 +67,25 @@ end
 // function: weight clamp
 //-------------------------------------------------------------------------
 function signed [WEIGHT_BITWIDTH-1:0] clamp;
-	input signed [WEIGHT_BITWIDTH-1:0] val;
-	begin
-		if      (val > WEIGHT_MAX) clamp = WEIGHT_MAX;
-		else if (val < WEIGHT_MIN) clamp = WEIGHT_MIN;
-		else                       clamp = val;
-	end
+    input signed [WEIGHT_BITWIDTH-1:0] current_val; // 현재 가중치 값
+    input signed [1:0]                 delta;       // 더할 값 (+1 또는 -1)
+
+    begin
+        if (delta == 2'd1) begin
+            if (current_val == WEIGHT_MAX) begin
+                clamp = WEIGHT_MAX;
+            end else begin
+                clamp = current_val + delta;
+            end
+        end
+        else begin // if (delta == -1) 
+            if (current_val == WEIGHT_MIN) begin
+                clamp = WEIGHT_MIN;
+            end else begin
+                clamp = current_val + delta;
+            end
+        end
+    end
 endfunction
 
 //-------------------------------------------------------------------------
@@ -90,12 +103,8 @@ always @(posedge clk or negedge rstn) begin
 				weight_mem[i][j] <= 'd0;
 		end
 		GHR <= 'd0;
-		pred <= 1'b0;
 	end 
 	else begin
-		// (선택) 접근 예측 결과를 레지스터로 보관하고 싶다면 여기에 non-blocking 할당
-		// pred <= pred; // 이미 combinational으로 처리됨
-
 		if (update) begin
 			
 			// when predcition is resolved, update parameters
@@ -116,13 +125,14 @@ always @(posedge clk or negedge rstn) begin
 			if ((pred_update != actually_taken)
 				|| (sum_update <= THRESHOLD && sum_update >= -THRESHOLD)) begin
 
-				weight_mem[update_idx][0] <= clamp(weight_mem[update_idx][0] + actual_bit);
+				weight_mem[update_idx][0] <= clamp(weight_mem[update_idx][0], actual_bit);
+
 
 				for (i = 1; i <= HIST_LEN; i = i + 1) begin
-					if (GHR[i-1])
-						weight_mem[update_idx][i] <= clamp(weight_mem[update_idx][i] + actual_bit);
+					if (actually_taken==GHR[i-1])
+						weight_mem[update_idx][i] <= clamp(weight_mem[update_idx][i],  1); // when correct, increase weight
 					else
-						weight_mem[update_idx][i] <= clamp(weight_mem[update_idx][i] - actual_bit);
+						weight_mem[update_idx][i] <= clamp(weight_mem[update_idx][i],  -1); // if not, decrease weight
 				end
 
 			end
