@@ -22,8 +22,12 @@
  * @param assoc - number of cache entries in a set
  */
 cache_set_c::cache_set_c(int assoc) {
-  m_entry = new cache_entry_c[assoc];
-  m_assoc = assoc;
+	m_entry = new cache_entry_c[assoc];
+	m_assoc = assoc;
+
+	// init LRU list
+	for (int i = 0; i < assoc; ++i) 
+	m_lru.push_back(i); 
 }
 
 // cache_set_c destructor
@@ -82,9 +86,84 @@ cache_base_c::~cache_base_c() {
  * @param return "true" on a hit; "false" otherwise.
  */
 bool cache_base_c::access(addr_t address, int access_type, bool is_fill) {
-  ////////////////////////////////////////////////////////////////////
-  // TODO: Write the code to implement this function
-  ////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////
+	// TODO: Write the code to implement this function
+	////////////////////////////////////////////////////////////////////
+	// memory : request address from instructions
+
+	if (is_fill) {
+		m_num_accesses++;
+		if (access_type == WRITE) {
+			m_num_writes++;
+		}
+	}
+
+	addr_t block_num	= address / m_line_size;
+	int   index     	= static_cast<int>(block_num % m_num_sets);
+	addr_t tag      	= block_num / m_num_sets;
+
+
+	cache_set_c* set = m_set[index];
+
+	int hit_way = -1;
+	for (int way = 0; way < set->m_assoc; way++) {
+		cache_entry_c &ent = set->m_entry[way];
+		if (ent.m_valid && ent.m_tag == tag) {
+			hit_way = way;
+			break;
+		}
+	}
+
+	// when cahce HIT
+	if (hit_way >= 0) {
+		if (is_fill) {
+			m_num_hits++;
+		}
+
+		cache_entry_c &ent = set->m_entry[hit_way];
+		if (access_type == WRITE) {
+			ent.m_dirty = true;
+		}
+
+		// LRU update
+		set->m_lru.remove(hit_way);
+		set->m_lru.push_front(hit_way); // mark as MRU
+
+		return true;
+	}
+
+	// when cache MISS
+	if (is_fill) {
+		m_num_misses++;
+	}
+
+	// (4) Eviction (LRU 위치에 있는 way가 피봇)
+	//    LRU 리스트의 맨 뒤(back)가 “가장 오래 전에 사용된(= LRU)” way 인덱스
+	int victim_way = set->m_lru.back();
+	cache_entry_c &victim = set->m_entry[victim_way];
+
+	// (5) Victim이 valid이면서 dirty이면 write-back 비용 카운트
+	if (victim.m_valid && victim.m_dirty) {
+		m_num_writebacks++;
+		// (여기서는 실제로 하위 메모리에 ‘쿼터(write-back)’를 보낸다고 가정하고
+		//  통계만 올림. 더 자세한 모델이 필요하면 여기에 추가로 ‘하위 메모리 write’ 로직을 넣을 수 있음.)
+	}
+
+	// (6) 새로운 블록을 Victim 엔트리에 덮어쓴다 (Fill 동작)
+	victim.m_valid = true;
+	victim.m_tag   = tag;
+	
+	if (access_type == WRITE) {
+		victim.m_dirty = true;
+	} else {
+		victim.m_dirty = false;
+	}
+
+	// (7) LRU 업데이트: Victim way를 MRU로 옮기기
+	set->m_lru.pop_back();         // LRU 위치(맨 뒤)에서 삭제
+	set->m_lru.push_front(victim_way); // MRU(맨 앞)로 삽입
+
+	return false; // Miss
 }
 
 /**
