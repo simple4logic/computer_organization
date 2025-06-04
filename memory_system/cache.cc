@@ -82,6 +82,9 @@ void cache_c::configure_neighbors(cache_c *prev_i, cache_c *prev_d, cache_c *nex
  */
 bool cache_c::fill(mem_req_s *req)
 {
+    req->m_rdy_cycle = m_cycle + m_latency;
+    m_fill_queue->push(req);
+    return true;
 }
 
 /**
@@ -116,7 +119,7 @@ void cache_c::process_in_queue()
         if (req->m_rdy_cycle > m_cycle)
             continue; // not ready yet
 
-        bool hit = cache_base_c::access(req->m_addr, req->m_type, /*is_fill=*/true);
+        bool hit = cache_base_c::access(req->m_addr, req->m_type, /*is_fill=*/false);
 
         if (hit) {
             if (m_level == 1) {
@@ -187,7 +190,7 @@ void cache_c::process_fill_queue()
     for (auto req : m_fill_queue->m_entry) {
         if (req->m_rdy_cycle > m_cycle)
             continue; // not ready yet
-        cache_base_c::access(req->m_addr, req->m_type, /*is_fill=*/false);
+        cache_base_c::access(req->m_addr, req->m_type, /*is_fill=*/true);
 
         // TODO ?(여기서 L2→L1 fill, 혹은 Core 응답 코드가 필요하면 추가)
 

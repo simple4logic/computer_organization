@@ -58,7 +58,7 @@ void memory_hierarchy_c::init(config_c &config)
     int hierarchy = config.get_mem_hierarchy();
 
     // ------------------------------------------------------------
-    // 1. DRAM_ONLY 모드: DRAM만 생성
+    // 1. DRAM_ONLY 모드: DRAM
     // ------------------------------------------------------------
     if (hierarchy == static_cast<int>(Hierarchy::DRAM_ONLY)) {
         m_l1u_cache = nullptr;
@@ -68,7 +68,34 @@ void memory_hierarchy_c::init(config_c &config)
         return;
     }
 
-    m_dram->set_done_func(std::bind(&memory_hierarchy_c::push_done_req, this, std::placeholders::_1));
+    // ------------------------------------------------------------
+    // 2. SINGLE_LEVEL 모드: L1U
+    // ------------------------------------------------------------
+    if (hierarchy == static_cast<int>(Hierarchy::SINGLE_LEVEL)) {
+        int l1u_size = config.get_l2_size();   // set L1U size to L2 size (16KB)
+        int l1u_assoc = config.get_l2_assoc(); // use 4 way set associative
+        int l1u_line_size = config.get_l1d_line_size();
+        int l1u_latency = config.get_l1d_latency();
+        int l1u_num_sets = l1u_size / (l1u_line_size * l1u_assoc);
+
+        // → L2를 “레벨 1”처럼 사용
+        m_l1u_cache = new cache_c(
+            "L1",
+            /*level   =*/1,
+            /*num_set =*/l1u_num_sets,
+            /*assoc   =*/l1u_assoc,
+            /*line_sz =*/l1u_line_size,
+            /*latency =*/l1u_latency);
+        m_l1u_cache->configure_neighbors(
+            /*prev_i=*/nullptr,
+            /*prev_d=*/nullptr,
+            /*next   =*/nullptr,
+            /*memory =*/m_dram);
+
+        m_l1u_cache->set_done_func(std::bind(&memory_hierarchy_c::push_done_req, this, std::placeholders::_1));
+        m_dram->set_done_func(std::bind(&memory_hierarchy_c::push_done_req, this, std::placeholders::_1));
+        return;
+    }
 }
 
 /**
@@ -90,6 +117,13 @@ bool memory_hierarchy_c::access(addr_t address, int access_type)
     int hierarchy = m_config.get_mem_hierarchy();
     if (hierarchy == static_cast<int>(Hierarchy::DRAM_ONLY)) {
         m_dram->access(req);
+    }
+    else if (hierarchy == static_cast<int>(Hierarchy::SINGLE_LEVEL)) {
+        assert(m_l1u_cache && "L1U cache not instantiated");
+        m_l1u_cache->access(req);
+    }
+    else {
+        assert(false && "Unknown memory hierarchy mode in access()");
     }
 
     return true;
@@ -146,6 +180,14 @@ void memory_hierarchy_c::run_a_cycle()
     if (hierarchy == static_cast<int>(Hierarchy::DRAM_ONLY)) {
         m_dram->run_a_cycle();
     }
+    else if (hierarchy == static_cast<int>(Hierarchy::SINGLE_LEVEL)) {
+        assert(m_l1u_cache && "L1U cache not instantiated");
+        m_dram->run_a_cycle();
+        m_l1u_cache->run_a_cycle();
+    }
+    else {
+        assert(false && "Unknown memory hierarchy mode in run_a_cycle()");
+    }
 
     process_done_req();
 
@@ -197,6 +239,13 @@ bool memory_hierarchy_c::is_wb_done()
     if (hierarchy == static_cast<int>(Hierarchy::DRAM_ONLY)) {
         return true;
     }
+    // 2) SINGLE_LEVEL: Unified L1U만 검사
+    else if (hierarchy == static_cast<int>(Hierarchy::SINGLE_LEVEL)) {
+        // m_in_flight_wb_queue가 비어 있으면 write-back 완료로 간주
+        return m_l1u_cache->m_in_flight_wb_queue->empty();
+    }
+
+    assert(false && "Unknown hierarchy in is_wb_done()");
     return false;
 }
 
