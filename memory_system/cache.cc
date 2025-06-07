@@ -119,16 +119,16 @@ void cache_c::process_in_queue()
         if (req->m_rdy_cycle > m_cycle)
             continue; // not ready yet
 
-        bool hit = cache_base_c::access(req->m_addr, req->m_type, /*is_fill=*/false);
+        bool hit = cache_base_c::access(req->m_addr, req->m_type, /*is_fill=*/false); // real access
 
-        if (hit) {
+        if (hit) { // if l1 hit, L1 -> core
             if (m_level == 1) {
                 if (done_func) {
                     done_func(req);
                 }
             }
             else {
-                // when L2 level
+                // if l2 hit, L2 -> L1I or L1D
                 if (req->m_type == REQ_IFETCH) { // To L1I
                     if (m_prev_i)
                         m_prev_i->fill(req);
@@ -186,13 +186,34 @@ void cache_c::process_out_queue()
 void cache_c::process_fill_queue()
 {
     // modified
+    // wait
     std::vector<mem_req_s *> to_remove;
     for (auto req : m_fill_queue->m_entry) {
         if (req->m_rdy_cycle > m_cycle)
             continue; // not ready yet
+
+        // to access to fill (not counted as hit or miss)
         cache_base_c::access(req->m_addr, req->m_type, /*is_fill=*/true);
 
-        // TODO ?(여기서 L2→L1 fill, 혹은 Core 응답 코드가 필요하면 추가)
+        // if this req is @ L1, we need to say that it is done
+        if (m_level == 1 && done_func) {
+            done_func(req);
+        }
+
+        // INCLUSIVE POLICY`: propagate mem -> L2 -> L1I or L1D
+        // if this req is @ L2, we need to forward it to L1I or L1D as well
+        if (m_level == 2) {
+            if (req->m_type == REQ_IFETCH) {
+                if (m_prev_i) {
+                    m_prev_i->fill(req); // L2→L1I fill
+                }
+            }
+            else {
+                if (m_prev_d) {
+                    m_prev_d->fill(req); // L2→L1D fill
+                }
+            }
+        }
 
         to_remove.push_back(req);
     }
