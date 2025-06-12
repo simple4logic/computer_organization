@@ -162,7 +162,7 @@ bool cache_base_c::access(addr_t address, int access_type, bool is_fill)
                 // load into empty way
                 set->m_entry[way].m_valid = true;
                 set->m_entry[way].m_tag = tag;
-                set->m_entry[way].m_dirty = (access_type == WRITE); // TODO -> 내부적으로 write -> read로 바꿔줬으면 필요 없을수도?
+                set->m_entry[way].m_dirty = (access_type == WRITE | access_type == WRITE_BACK);
 
                 // renew LRU
                 set->m_lru.remove(way);
@@ -188,7 +188,7 @@ bool cache_base_c::access(addr_t address, int access_type, bool is_fill)
         victim.m_tag = tag;
 
         if (access_type == WRITE || access_type == WRITE_BACK) {
-            victim.m_dirty = true; // TODO -> 내부적으로 write -> read로 바꿔줬으면 필요 없을수도?
+            victim.m_dirty = true;
         }
         else {
             victim.m_dirty = false;

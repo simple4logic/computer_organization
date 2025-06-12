@@ -260,7 +260,7 @@ void cache_c::process_fill_queue()
                 mem_req_s *wb_req = new mem_req_s(evict_addr, REQ_WB);
                 wb_req->m_in_cycle = req->m_in_cycle;
                 m_in_flight_wb_queue->push(wb_req); // for wb tracking
-                m_wb_queue->push(wb_req);           // push it to L1 wb queue
+                m_wb_queue->push(wb_req);           // push it to L2 wb queue
             }
 
             // do back invalidation
