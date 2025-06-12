@@ -78,7 +78,6 @@ void memory_hierarchy_c::init(config_c &config)
         int l1u_latency = config.get_l1d_latency();
         int l1u_num_sets = l1u_size / (l1u_line_size * l1u_assoc);
 
-        // → L2를 “레벨 1”처럼 사용
         m_l1u_cache = new cache_c(
             "L1",
             /*level   =*/1,
@@ -92,6 +91,7 @@ void memory_hierarchy_c::init(config_c &config)
             /*next   =*/nullptr,
             /*memory =*/m_dram);
 
+        m_dram->configure_neighbors(m_l1u_cache);
         m_l1u_cache->set_done_func(std::bind(&memory_hierarchy_c::push_done_req, this, std::placeholders::_1));
         m_dram->set_done_func(std::bind(&memory_hierarchy_c::push_done_req, this, std::placeholders::_1));
         return;
@@ -149,6 +149,7 @@ void memory_hierarchy_c::init(config_c &config)
             /*next=*/nullptr,
             /*memory=*/m_dram);
 
+        m_dram->configure_neighbors(m_l2_cache);
         m_l1i_cache->set_done_func(std::bind(&memory_hierarchy_c::push_done_req, this, std::placeholders::_1));
         m_l1d_cache->set_done_func(std::bind(&memory_hierarchy_c::push_done_req, this, std::placeholders::_1));
         m_l2_cache->set_done_func(std::bind(&memory_hierarchy_c::push_done_req, this, std::placeholders::_1));
@@ -321,7 +322,8 @@ bool memory_hierarchy_c::is_wb_done()
         bool l1i_empty = m_l1i_cache->m_in_flight_wb_queue->empty();
         bool l1d_empty = m_l1d_cache->m_in_flight_wb_queue->empty();
         bool l2_empty = m_l2_cache->m_in_flight_wb_queue->empty();
-        return (l1i_empty && l1d_empty && l2_empty);
+        bool dram_empty = m_dram->m_in_flight_wb_queue->empty();
+        return (l1i_empty && l1d_empty && l2_empty && dram_empty);
     }
 
     assert(false && "Unknown hierarchy in is_wb_done()");

@@ -63,6 +63,12 @@ cache_base_c::cache_base_c(std::string name, int num_sets, int assoc,
         }
     }
 
+    // init cache state
+    is_writeback = false;
+    is_evict = false;
+    is_wb_by_backinval = false;
+    evict_addr = 0;
+
     // initialize stats
     m_num_accesses = 0;
     m_num_hits = 0;
@@ -96,12 +102,118 @@ bool cache_base_c::access(addr_t address, int access_type, bool is_fill)
     ////////////////////////////////////////////////////////////////////
     // memory : request address from instructions
 
+    addr_t block_num = address / m_line_size;
+    int index = static_cast<int>(block_num % m_num_sets);
+    addr_t tag = block_num / m_num_sets;
+    cache_set_c *set = m_set[index];
+
+    is_evict = false;           // set eviction flag
+    is_writeback = false;       // reset writeback flag
+    is_wb_by_backinval = false; // reset writeback by back invalidation flag
+
+    /////////////////////////////////////
+    /// Cache Access
+    /////////////////////////////////////
     if (!is_fill) {
         m_num_accesses++;
         if (access_type == WRITE) {
             m_num_writes++;
         }
+
+        int hit_way = -1;
+        for (int way = 0; way < set->m_assoc; way++) {
+            cache_entry_c &ent = set->m_entry[way];
+            if (ent.m_valid && ent.m_tag == tag) {
+                hit_way = way;
+                break;
+            }
+        }
+
+        //////////////////////// when cahce HIT
+        if (hit_way >= 0) {
+            m_num_hits++;
+
+            cache_entry_c &ent = set->m_entry[hit_way];
+            if (access_type == WRITE) {
+                ent.m_dirty = true;
+            }
+
+            // LRU update
+            set->m_lru.remove(hit_way);
+            set->m_lru.push_front(hit_way); // mark as MRU
+
+            return true;
+        }
+
+        //////////////////////// when cache MISS
+        m_num_misses++;
+        return false;
     }
+
+    /////////////////////////////////////
+    /// Cache Fill
+    /////////////////////////////////////
+    else {
+
+        // evict invalid victim first
+        for (int way = 0; way < set->m_assoc; ++way) {
+            if (!set->m_entry[way].m_valid) { // find invalid way
+
+                // load into empty way
+                set->m_entry[way].m_valid = true;
+                set->m_entry[way].m_tag = tag;
+                set->m_entry[way].m_dirty = (access_type == WRITE); // TODO -> 내부적으로 write -> read로 바꿔줬으면 필요 없을수도?
+
+                // renew LRU
+                set->m_lru.remove(way);
+                set->m_lru.push_front(way);
+                return false;
+            }
+        } // when invalid evicted, no need to do left steps
+
+        // if not, then Eviction using LRU policy
+        int victim_way = set->m_lru.back();
+        cache_entry_c &victim = set->m_entry[victim_way];
+        evict_addr = (victim.m_tag * m_num_sets + index) * m_line_size;
+        is_evict = true; // set eviction flag
+
+        // valid & dirty -> write back
+        if (victim.m_valid && victim.m_dirty) {
+            m_num_writebacks++;
+            is_writeback = true; // set writeback flag
+        }
+
+        // allocate new cache line to victim`
+        victim.m_valid = true;
+        victim.m_tag = tag;
+
+        if (access_type == WRITE || access_type == WRITE_BACK) {
+            victim.m_dirty = true; // TODO -> 내부적으로 write -> read로 바꿔줬으면 필요 없을수도?
+        }
+        else {
+            victim.m_dirty = false;
+        }
+
+        // update LRU - victim = MRU
+        set->m_lru.pop_back();
+        set->m_lru.push_front(victim_way);
+        // }
+
+        return false; // Miss
+    }
+    assert("can not reach here");
+    return false; // should not reach here
+}
+
+// added
+/*
+ * This function invalidates a cache entry based on the address.
+ * 1. check if the address is in the cache (hit or not)
+ * 2. if hit, invalidate the entry (if not, nothing)
+ * 3. if the entry is dirty, return true (writeback needed)
+ */
+bool cache_base_c::try_invaildate(addr_t address)
+{
 
     addr_t block_num = address / m_line_size;
     int index = static_cast<int>(block_num % m_num_sets);
@@ -112,61 +224,19 @@ bool cache_base_c::access(addr_t address, int access_type, bool is_fill)
     int hit_way = -1;
     for (int way = 0; way < set->m_assoc; way++) {
         cache_entry_c &ent = set->m_entry[way];
+
         if (ent.m_valid && ent.m_tag == tag) {
-            hit_way = way;
-            break;
+            // hit -> invalidate
+            ent.m_valid = false;
+            if (ent.m_dirty) {
+                // writeback due to invalidation needed
+                is_wb_by_backinval = true; // set writeback flag
+            }
+            return true; // not needed
         }
     }
-
-    // when cahce HIT
-    if (hit_way >= 0) {
-        if (!is_fill) {
-            m_num_hits++;
-        }
-
-        cache_entry_c &ent = set->m_entry[hit_way];
-        if (access_type == WRITE) {
-            ent.m_dirty = true;
-        }
-
-        // LRU update
-        set->m_lru.remove(hit_way);
-        set->m_lru.push_front(hit_way); // mark as MRU
-
-        return true;
-    }
-
-    // when cache MISS
-    if (!is_fill) {
-        m_num_misses++;
-    }
-
-    // Eviction using LRU policy
-    int victim_way = set->m_lru.back();
-    cache_entry_c &victim = set->m_entry[victim_way];
-
-    // valid & dirty -> write back
-    if (victim.m_valid && victim.m_dirty) {
-        m_num_writebacks++;
-        // ASSUME: write back to memory (not implemented here)
-    }
-
-    // allocate new cache line to victim
-    victim.m_valid = true;
-    victim.m_tag = tag;
-
-    if (access_type == WRITE) {
-        victim.m_dirty = true;
-    }
-    else {
-        victim.m_dirty = false;
-    }
-
-    // update LRU - victim = MRU
-    set->m_lru.pop_back();
-    set->m_lru.push_front(victim_way);
-
-    return false; // Miss
+    // miss -> nothing to invalidate
+    return false;
 }
 
 /**
