@@ -125,7 +125,7 @@ void cache_c::process_in_queue()
             if (hit)
                 done_func(req);
             else
-                m_out_queue->push(req);
+                m_out_queue->push(req); // L1 miss -> L2 access try
         }
         // m_level == 2
         else {
@@ -138,11 +138,12 @@ void cache_c::process_in_queue()
 
             if (hit) {
                 // if l2 hit, L2 -> L1I or L1D
-                if (req->m_type == REQ_IFETCH) { // To L1I
+                if (req->m_type == REQ_IFETCH) { // read instruction, To L1I
                     if (m_prev_i)
                         m_prev_i->fill(req);
                 }
-                else { // To L1D
+                else { // read or write To L1D
+                    // though L2 access as read -> this write req will processed @ fill Q of L1D
                     if (m_prev_d)
                         m_prev_d->fill(req);
                 }
@@ -217,8 +218,8 @@ void cache_c::process_fill_queue()
 
         // if this req is @ L1, we need to say that it is done
         if (m_level == 1) {
+            // when L1 get a block from L2 or mem
             cache_base_c::access(req->m_addr, req->m_type, /*is_fill=*/true);
-            // after filling the cache -> check cache state (writback & back invalidation status)
 
             // issue writeback request
             if (is_writeback) {
@@ -232,17 +233,20 @@ void cache_c::process_fill_queue()
         }
 
         else if (m_level == 2) {
+            // request = REQ_WB from L1 or REQ_IFETCH/DFETCH/DSTORE from MEM
+
+            // wb req from L1
+            // will be done here -> pop from tracking list
+            if (req->m_type == REQ_WB) {
+                m_in_flight_wb_queue->pop(req);
+            }
+
             int type = req->m_type;
-            if (type == WRITE) {
-                type = READ; // if the request is a write, change the type to read
+            if (type == WRITE) { // only when REQ_DSTORE
+                type = READ;     // if the request is a write, change the type to read
             }
 
             cache_base_c::access(req->m_addr, type, /*is_fill=*/true);
-
-            // wb req from L1
-            if (req->m_type == REQ_WB) {
-                m_in_flight_wb_queue->pop(req); //
-            }
 
             /*
             About back invalidation & writeback
@@ -253,27 +257,30 @@ void cache_c::process_fill_queue()
                 2. therefore should be directed to memory
                 -> put it to L2's wb queue
              */
-            // issue writeback request
-            // this is_ writeback == L2's argument
-            if (is_writeback) {
-                // when L2 evicts a block & it was dirty, we need to write it back to memory
-                mem_req_s *wb_req = new mem_req_s(evict_addr, REQ_WB);
-                wb_req->m_in_cycle = req->m_in_cycle;
-                m_in_flight_wb_queue->push(wb_req); // for wb tracking
-                m_wb_queue->push(wb_req);           // push it to L2 wb queue
-            }
 
             // do back invalidation
             if (is_evict) {
                 // is evict true == that block should be invalidated
                 // can miss (since L2 is bigger than L1)
 
+                // when L2 evict & dirty -> wb to memory
+                if (is_writeback) {
+                    // when L2 evicts a block & it was dirty, we need to write it back to memory
+                    mem_req_s *wb_req = new mem_req_s(evict_addr, REQ_WB);
+                    wb_req->m_in_cycle = req->m_in_cycle;
+                    m_in_flight_wb_queue->push(wb_req); // for wb tracking
+                    m_wb_queue->push(wb_req);           // push it to L2 wb queue
+                }
+
+                // try back invalidation
                 if (m_prev_i->try_invaildate(evict_addr)) { // L2 -> L1I
                     // return true mean hit & invalidate
                     m_prev_i->num_backinvals_inc();
                 }
-                else if (m_prev_d->try_invaildate(evict_addr)) { // L2 -> L1D
+                if (m_prev_d->try_invaildate(evict_addr)) { // L2 -> L1D
+
                     m_prev_d->num_backinvals_inc();
+
                     if (m_prev_d->is_wb_by_backinval) {
                         m_prev_d->num_writebacks_backinval_inc();
 
@@ -287,14 +294,16 @@ void cache_c::process_fill_queue()
 
             // INCLUSIVE POLICY`: propagate mem -> L2 -> L1I or L1D
             // if this req is @ L2, we need to forward it to L1I or L1D as well
-            if (req->m_type == REQ_IFETCH) {
-                if (m_prev_i) {
-                    m_prev_i->fill(req); // L2→L1I fill
+            if (req->m_type != REQ_WB) {
+                if (req->m_type == REQ_IFETCH) {
+                    if (m_prev_i) {
+                        m_prev_i->fill(req); // L2→L1I fill
+                    }
                 }
-            }
-            else if (req->m_type == REQ_DFETCH || req->m_type == REQ_DSTORE) {
-                if (m_prev_d) {
-                    m_prev_d->fill(req); // L2→L1D fill
+                else { // REQ_DFETCH or REQ_DSTORE
+                    if (m_prev_d) {
+                        m_prev_d->fill(req); // L2→L1D fill
+                    }
                 }
             }
         }

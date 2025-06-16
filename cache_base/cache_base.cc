@@ -154,6 +154,16 @@ bool cache_base_c::access(addr_t address, int access_type, bool is_fill)
     /// Cache Fill
     /////////////////////////////////////
     else {
+        if (access_type == WRITE_BACK) {
+            for (int way = 0; way < set->m_assoc; way++) {
+                cache_entry_c &ent = set->m_entry[way];
+                if (ent.m_valid && ent.m_tag == tag) {
+                    set->m_entry[way].m_dirty = true;
+                    return true;
+                }
+            }
+            assert("wb is always hit");
+        }
 
         // evict invalid victim first
         for (int way = 0; way < set->m_assoc; ++way) {
@@ -167,6 +177,7 @@ bool cache_base_c::access(addr_t address, int access_type, bool is_fill)
                 // renew LRU
                 set->m_lru.remove(way);
                 set->m_lru.push_front(way);
+
                 return false;
             }
         } // when invalid evicted, no need to do left steps
@@ -197,7 +208,6 @@ bool cache_base_c::access(addr_t address, int access_type, bool is_fill)
         // update LRU - victim = MRU
         set->m_lru.pop_back();
         set->m_lru.push_front(victim_way);
-        // }
 
         return false; // Miss
     }
@@ -218,6 +228,7 @@ bool cache_base_c::try_invaildate(addr_t address)
     addr_t block_num = address / m_line_size;
     int index = static_cast<int>(block_num % m_num_sets);
     addr_t tag = block_num / m_num_sets;
+    is_wb_by_backinval = false; // reset writeback by back invalidation flag
 
     cache_set_c *set = m_set[index];
 
