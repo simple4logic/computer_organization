@@ -82,3 +82,44 @@ number of writebacks: 2950
 number of back invalidations: 0
 number of writebacks due to back invalidations: 0
 ```
+
+## part 3
+
+multi level
+(L1I) : 2KB , 2-Way SA, LRU, 64B Line Size, 4 -cycle latency
+(L1D) : 2KB , 2-Way SA, LRU, 64B Line Size, 4 -cycle latency
+(L2 ) : 16KB, 4-Way SA, LRU, 64B Line Size, 10-cycle latency, Inclusive
+
+```bash
+./memory_sim ./traces/sample.trace ./configs/memory.cfg
+------------------------------
+L1I Hit Rate: 93.4227 %
+------------------------------
+number of accesses: 779515
+number of hits: 728244
+number of misses: 51271
+number of writes: 0
+number of writebacks: 0
+number of back invalidations: 380
+number of writebacks due to back invalidations: 0
+------------------------------
+L1D Hit Rate: 88.474 %
+------------------------------
+number of accesses: 220485
+number of hits: 195072
+number of misses: 25413
+number of writes: 80669
+number of writebacks: 9251
+number of back invalidations: 1406
+number of writebacks due to back invalidations: 538
+------------------------------
+L2 Hit Rate: 58.1177 %
+------------------------------
+number of accesses: 76684
+number of hits: 44567
+number of misses: 32117
+number of writes: 0
+number of writebacks: 3126
+number of back invalidations: 0
+number of writebacks due to back invalidations: 0
+```
