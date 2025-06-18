@@ -120,12 +120,29 @@ void cache_c::process_in_queue()
             continue; // not ready yet
 
         if (m_level == 1) {
-            bool hit = cache_base_c::access(req->m_addr, req->m_type, /*is_fill=*/false); // real access
+            addr_t block_addr = req->m_addr / get_line_size();
 
-            if (hit)
-                done_func(req);
-            else
-                m_out_queue->push(req); // L1 miss -> L2 access try
+            // check if current blk addr is in MSHR
+            // count # of requests @ this address (block_addr)
+            if (m_mshr.count(block_addr)) {
+                // case 1 : in MSHR -> add to the waiting list (do not access cache)
+                m_mshr[block_addr].push_back(req);
+            }
+            else {
+                // case 2 : not in MSHR -> check cache hit or miss
+                bool hit = cache_base_c::access(req->m_addr, req->m_type, /*is_fill=*/false);
+
+                if (hit) {
+                    // case 2-1 if hit, req done
+                    done_func(req);
+                }
+                else {
+                    // case 2-2 if miss, we need to fill the cache, make req
+                    m_mshr[block_addr].push_back(req);
+                    // send representative req to out_queue (will be sent to L2)
+                    m_out_queue->push(req);
+                }
+            }
         }
         // m_level == 2
         else {
@@ -218,18 +235,35 @@ void cache_c::process_fill_queue()
 
         // if this req is @ L1, we need to say that it is done
         if (m_level == 1) {
+            /***  do filling cache for representative request ***/
             // when L1 get a block from L2 or mem
             cache_base_c::access(req->m_addr, req->m_type, /*is_fill=*/true);
 
             // issue writeback request
-            if (is_writeback) {
+            if (is_evict && is_writeback) {
                 mem_req_s *wb_req = new mem_req_s(evict_addr, REQ_WB);
                 wb_req->m_in_cycle = req->m_in_cycle;
                 m_in_flight_wb_queue->push(wb_req); // for wb tracking
                 m_wb_queue->push(wb_req);           // push it to L1 wb queue
             }
 
-            done_func(req);
+            // process MSHR using this filling above
+            addr_t block_addr = req->m_addr / get_line_size();
+            if (m_mshr.count(block_addr)) {
+                auto &waiting_reqs = m_mshr[block_addr];
+
+                for (auto waiting_req : waiting_reqs) {
+                    // these requests should be hit as their representative request is filled
+                    if (waiting_req != req) {
+                        // to skip the representative request
+                        cache_base_c::access(waiting_req->m_addr, waiting_req->m_type, /*is_fill=*/false);
+                    }
+                    done_func(waiting_req);
+                }
+                // delete after done
+                m_mshr.erase(block_addr);
+            }
+            // done_func(req);
         }
 
         else if (m_level == 2) {

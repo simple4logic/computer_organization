@@ -13,6 +13,7 @@
 
 #include <cstring>
 #include <functional>
+#include <unordered_map>
 
 // forward declaration
 class simple_mem_c;
@@ -57,6 +58,8 @@ class cache_c : public cache_base_c {
     queue_c *m_out_queue;  ///< out queue
     queue_c *m_fill_queue; ///< fill queue
     queue_c *m_wb_queue;   ///< write-back queue
+
+    std::unordered_map<addr_t, std::list<mem_req_s *>> m_mshr;
 
     counter m_cycle; ///< clock cycle
 

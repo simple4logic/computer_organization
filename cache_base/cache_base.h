@@ -53,6 +53,7 @@ class cache_base_c {
     void print_stats();
     void dump_tag_store(bool is_file); // false: dump to stdout, true: dump to a file
     bool try_invaildate(addr_t address);
+    int get_line_size() const { return m_line_size; } // get cache line size
     addr_t evict_addr;
     bool is_writeback;       // current cache state : this evicted line is writeback or not
     bool is_evict;           // current cache state : this evicted line is back invalidation or not

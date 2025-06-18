@@ -93,6 +93,13 @@ multi level
 ```bash
 ./memory_sim ./traces/sample.trace ./configs/memory.cfg
 ------------------------------
+Performance Stats
+------------------------------
+CPI:  12.644
+number of cycles: 9856165
+number of insts: 779515
+number of memory insts: 220485
+------------------------------
 L1I Hit Rate: 93.4227 %
 ------------------------------
 number of accesses: 779515
@@ -120,6 +127,55 @@ number of hits: 44567
 number of misses: 32117
 number of writes: 0
 number of writebacks: 3126
+number of back invalidations: 0
+number of writebacks due to back invalidations: 0
+```
+
+## part 4
+
+multi level
+(L1I) : 2KB , 2-Way SA, LRU, 64B Line Size, 4 -cycle latency
+(L1D) : 2KB , 2-Way SA, LRU, 64B Line Size, 4 -cycle latency
+(L2 ) : 16KB, 4-Way SA, LRU, 64B Line Size, 10-cycle latency, Inclusive
+
+with Multiple Requests
+
+```bash
+------------------------------
+Performance Stats
+------------------------------
+CPI:  1.28306
+number of cycles: 1000166
+number of insts: 779515
+number of memory insts: 220485
+------------------------------
+L1I Hit Rate: 93.513 %
+------------------------------
+number of accesses: 779515
+number of hits: 728948
+number of misses: 50567
+number of writes: 0
+number of writebacks: 0
+number of back invalidations: 275
+number of writebacks due to back invalidations: 0
+------------------------------
+L1D Hit Rate: 88.6827 %
+------------------------------
+number of accesses: 220485
+number of hits: 195532
+number of misses: 24953
+number of writes: 80669
+number of writebacks: 9202
+number of back invalidations: 1213
+number of writebacks due to back invalidations: 494
+------------------------------
+L2 Hit Rate: 58.5169 %
+------------------------------
+number of accesses: 75520
+number of hits: 44192
+number of misses: 31328
+number of writes: 0
+number of writebacks: 3056
 number of back invalidations: 0
 number of writebacks due to back invalidations: 0
 ```
