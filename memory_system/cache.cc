@@ -169,8 +169,7 @@ void cache_c::process_in_queue()
 void cache_c::process_out_queue()
 {
     while (!m_out_queue->empty()) {
-        mem_req_s *req = m_out_queue->m_entry[0];
-        m_out_queue->pop(req);
+        mem_req_s *req = m_out_queue->m_entry.front();
 
         if (m_next) { // if next is L2
             if (req->m_type == REQ_WB) {
@@ -199,6 +198,7 @@ void cache_c::process_out_queue()
         else {
             assert(false && "no next or memory");
         }
+        m_out_queue->pop(req);
     }
 }
 

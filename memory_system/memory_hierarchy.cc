@@ -38,6 +38,21 @@ memory_hierarchy_c::memory_hierarchy_c(config_c &config)
         assert(m_dram && "main memory is not instantiated");
         m_dram->set_done_func(std::bind(&memory_hierarchy_c::push_done_req, this, std::placeholders::_1));
     }
+    else if (config.get_mem_hierarchy() == static_cast<int>(Hierarchy::SINGLE_LEVEL)) {
+        assert(m_l1u_cache && "L1U cache is not instantiated");
+        m_l1u_cache->set_done_func(std::bind(&memory_hierarchy_c::push_done_req, this, std::placeholders::_1));
+    }
+    else if (config.get_mem_hierarchy() == static_cast<int>(Hierarchy::MULTI_LEVEL)) {
+        assert(m_l1i_cache && "L1I cache is not instantiated");
+        assert(m_l1d_cache && "L1D cache is not instantiated");
+        assert(m_l2_cache && "L2 cache is not instantiated");
+        m_l1i_cache->set_done_func(std::bind(&memory_hierarchy_c::push_done_req, this, std::placeholders::_1));
+        m_l1d_cache->set_done_func(std::bind(&memory_hierarchy_c::push_done_req, this, std::placeholders::_1));
+        m_l2_cache->set_done_func(std::bind(&memory_hierarchy_c::push_done_req, this, std::placeholders::_1));
+    }
+    else {
+        assert(0 && "Invalid memory hierarchy configuration");
+    }
 }
 
 /**
@@ -58,7 +73,7 @@ void memory_hierarchy_c::init(config_c &config)
     int hierarchy = config.get_mem_hierarchy();
 
     // ------------------------------------------------------------
-    // 1. DRAM_ONLY 모드: DRAM
+    // 1. DRAM_ONLY : DRAM
     // ------------------------------------------------------------
     if (hierarchy == static_cast<int>(Hierarchy::DRAM_ONLY)) {
         m_l1u_cache = nullptr;
@@ -69,7 +84,7 @@ void memory_hierarchy_c::init(config_c &config)
     }
 
     // ------------------------------------------------------------
-    // 2. SINGLE_LEVEL 모드: L1U
+    // 2. SINGLE_LEVEL : L1U
     // ------------------------------------------------------------
     else if (hierarchy == static_cast<int>(Hierarchy::SINGLE_LEVEL)) {
         int l1u_size = config.get_l2_size();   // set L1U size to L2 size (16KB)
@@ -97,10 +112,10 @@ void memory_hierarchy_c::init(config_c &config)
         return;
     }
     // ------------------------------------------------------------
-    // 3. MULTI_LEVEL 모드: L2 → L1I & L1D
+    // 3. MULTI_LEVEL : L2 → L1I & L1D
     // ------------------------------------------------------------
     else {
-        // 2.1) L2 Cache (L2) 생성
+        // 2.1) L2 Cache (L2)
         int l2_num_sets = config.get_l2_size() / (config.get_l2_line_size() * config.get_l2_assoc());
         m_l2_cache = new cache_c(
             "L2",
@@ -110,7 +125,7 @@ void memory_hierarchy_c::init(config_c &config)
             /*line_size=*/config.get_l2_line_size(),
             /*latency=*/config.get_l2_latency());
 
-        // 2.2) L1 Instruction Cache (L1I) 생성
+        // 2.2) L1 Instruction Cache (L1I)
         int l1i_num_sets = config.get_l1i_size() / (config.get_l1i_line_size() * config.get_l1i_assoc());
         m_l1i_cache = new cache_c(
             "L1I",
@@ -126,7 +141,7 @@ void memory_hierarchy_c::init(config_c &config)
             /*next=*/m_l2_cache,
             /*memory=*/nullptr);
 
-        // 2.3) L1 Data Cache (L1D) 생성
+        // 2.3) L1 Data Cache (L1D)
         int l1d_num_sets = config.get_l1d_size() / (config.get_l1d_line_size() * config.get_l1d_assoc());
         m_l1d_cache = new cache_c(
             "L1D",
@@ -142,7 +157,7 @@ void memory_hierarchy_c::init(config_c &config)
             /*next=*/m_l2_cache,
             /*memory=*/nullptr);
 
-        // 2.4) L2 Cache와 L1I, L1D 연결
+        // 2.4) L2 Cache to L1I, L1D
         m_l2_cache->configure_neighbors(
             /*prev_i=*/m_l1i_cache,
             /*prev_d=*/m_l1d_cache,
@@ -164,9 +179,11 @@ void memory_hierarchy_c::init(config_c &config)
 
 bool memory_hierarchy_c::access(addr_t address, int access_type)
 {
+    // send core's memory request to the memory hierarchy
 
     // create a memory request
     mem_req_s *req = create_mem_req(address, access_type);
+
     m_in_flight_reqs.push_back(req);
 
     ////////////////////////////////////////////////////////////////////
@@ -251,14 +268,14 @@ void memory_hierarchy_c::run_a_cycle()
     }
     else if (hierarchy == static_cast<int>(Hierarchy::SINGLE_LEVEL)) {
         assert(m_l1u_cache && "L1U cache not instantiated");
-        m_dram->run_a_cycle();
         m_l1u_cache->run_a_cycle();
+        m_dram->run_a_cycle();
     }
     else if (hierarchy == static_cast<int>(Hierarchy::MULTI_LEVEL)) {
-        m_dram->run_a_cycle();
-        m_l2_cache->run_a_cycle();
         m_l1i_cache->run_a_cycle();
         m_l1d_cache->run_a_cycle();
+        m_l2_cache->run_a_cycle();
+        m_dram->run_a_cycle();
     }
     else {
         assert(false && "Unknown memory hierarchy mode in run_a_cycle()");
@@ -293,7 +310,7 @@ void memory_hierarchy_c::process_done_req()
  */
 void memory_hierarchy_c::push_done_req(mem_req_s *req)
 {
-    DEBUG("[MEM_H] Done REQ #%d %8lx @ %ld\n", req->m_id, req->m_addr, m_cycle);
+    // DEBUG("[MEM_H] Done REQ #%d %8lx @ %ld\n", req->m_id, req->m_addr, m_cycle);
     m_done_queue->push(req);
 }
 
@@ -307,23 +324,23 @@ bool memory_hierarchy_c::is_wb_done()
     // If there is no in-flight write-back request for all caches, return true.
     ////////////////////////////////////////////////////////////////////
     int hierarchy = m_config.get_mem_hierarchy();
+    bool mem_empty = m_dram->m_in_flight_wb_queue->empty();
 
-    // 1) DRAM_ONLY: write-back 큐 개념이 없으므로 항상 완료된 것으로 본다.
+    // 1) DRAM_ONLY
     if (hierarchy == static_cast<int>(Hierarchy::DRAM_ONLY)) {
-        return true;
+        return mem_empty;
     }
-    // 2) SINGLE_LEVEL: Unified L1U만 검사
+    // 2) SINGLE_LEVEL
     else if (hierarchy == static_cast<int>(Hierarchy::SINGLE_LEVEL)) {
-        // m_in_flight_wb_queue가 비어 있으면 write-back 완료로 간주
-        return m_l1u_cache->m_in_flight_wb_queue->empty();
+        bool l1u_empty = m_l1u_cache->m_in_flight_wb_queue->empty();
+        return l1u_empty && mem_empty;
     }
-    // 3) MULTI_LEVEL: L1I, L1D, L2 각각 검사
+    // 3) MULTI_LEVEL
     else if (hierarchy == static_cast<int>(Hierarchy::MULTI_LEVEL)) {
         bool l1i_empty = m_l1i_cache->m_in_flight_wb_queue->empty();
         bool l1d_empty = m_l1d_cache->m_in_flight_wb_queue->empty();
         bool l2_empty = m_l2_cache->m_in_flight_wb_queue->empty();
-        bool dram_empty = m_dram->m_in_flight_wb_queue->empty();
-        return (l1i_empty && l1d_empty && l2_empty && dram_empty);
+        return (l1i_empty && l1d_empty && l2_empty && mem_empty);
     }
 
     assert(false && "Unknown hierarchy in is_wb_done()");

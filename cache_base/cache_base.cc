@@ -107,9 +107,8 @@ bool cache_base_c::access(addr_t address, int access_type, bool is_fill)
     addr_t tag = block_num / m_num_sets;
     cache_set_c *set = m_set[index];
 
-    is_evict = false;           // set eviction flag
-    is_writeback = false;       // reset writeback flag
-    is_wb_by_backinval = false; // reset writeback by back invalidation flag
+    is_evict = false;     // set eviction flag
+    is_writeback = false; // reset writeback flag
 
     /////////////////////////////////////
     /// Cache Access
@@ -162,7 +161,7 @@ bool cache_base_c::access(addr_t address, int access_type, bool is_fill)
                     return true;
                 }
             }
-            assert("wb is always hit");
+            assert("wb is always hit : Inclusive policy");
         }
 
         // evict invalid victim first
