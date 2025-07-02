@@ -30,7 +30,7 @@ MODULES = src/modules/control/alu_control.v 	\
 SOURCES = ./src/riscv_tb.v ./src/simple_cpu.v 
 
 baseline: $(MODULES) $(SOURCES)
-	iverilog -I src/modules/ -s riscv_tb -o simple_cpu $^
+	iverilog -I src/modules/ -s riscv_tb -DBASELINE -o simple_cpu $^
 
 gshare: $(MODULES) $(SOURCES)
 	iverilog -I src/modules/ -s riscv_tb -DGSHARE -o simple_cpu $^

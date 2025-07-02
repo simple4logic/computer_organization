@@ -28,8 +28,11 @@ module branch_hardware #(
 );
 
 wire hit_o;
-wire pred_o = 1'b0;
 wire [DATA_WIDTH-1:0] branch_target_o;
+
+`ifdef BASELINE
+wire pred_o = 1'b0;
+`endif
 
 `ifdef GSHARE
   // TODO: Instantiate the Gshare branch predictor
