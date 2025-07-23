@@ -1,0 +1,4 @@
+BreakBeforeBraces: Stroustrup 
+ColumnLimit: 0
+TabWidth: 4
+IndentWidth: 4
