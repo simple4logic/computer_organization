@@ -1,0 +1,5 @@
+data/stat.out
+sim.vcd
+simple_cpu*
+*.mem
+*.gtkw

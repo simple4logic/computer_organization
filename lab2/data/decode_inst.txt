@@ -1,0 +1,46 @@
+0x4 : jal X0 132
+0x8 : addi X2 X2 -32
+0xc : sw X1 28(X2)
+0x10 : sw X8 24(X2)
+0x14 : sw X9 20(X2)
+0x18 : addi X8 X2 32
+0x1c : sw X10 -20(X8)
+0x20 : lw X15 -20(X8)
+0x24 : bne X15 X0 12
+0x28 : addi X15 X0 0
+0x2c : jal X0 68
+0x30 : lw X14 -20(X8)
+0x34 : addi X15 X0 1
+0x38 : bne X14 X15 12
+0x3c : addi X15 X0 1
+0x40 : jal X0 48
+0x44 : lw X15 -20(X8)
+0x48 : addi X15 X15 -1
+0x4c : addi X10 X15 0
+0x50 : jal X1 -72
+0x54 : addi X9 X10 0
+0x58 : lw X15 -20(X8)
+0x5c : addi X15 X15 -2
+0x60 : addi X10 X15 0
+0x64 : jal X1 -92
+0x68 : addi X15 X10 0
+0x6c : add X15 X9 X15
+0x70 : addi X10 X15 0
+0x74 : lw X1 28(X2)
+0x78 : lw X8 24(X2)
+0x7c : lw X9 20(X2)
+0x80 : addi X2 X2 32
+0x84 : jalr X0 0(X1)
+0x88 : addi X2 X2 -32
+0x8c : sw X1 28(X2)
+0x90 : sw X8 24(X2)
+0x94 : addi X8 X2 32
+0x98 : addi X15 X0 3
+0x9c : sw X15 -20(X8)
+0xa0 : lw X10 -20(X8)
+0xa4 : jal X1 -156
+0xa8 : sw X10 -24(X8)
+0xac : lw X1 28(X2)
+0xb0 : lw X8 24(X2)
+0xb4 : addi X2 X2 32
+0xb8 : jal X0 0
