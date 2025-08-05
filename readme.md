@@ -1,8 +1,9 @@
-# 2025 spring ; Computer Organization
+# 2025 Spring ; Computer Organization
 
-prof. Jaewoong Sim
----
-## Target Language
+Main topic : __Computer Architecture__
+professor : Jaewoong Sim
+
+## Target language & libraries
 - Verilog
 - Cpp
 
