@@ -1,4 +1,8 @@
-# 2025 spring
+# 2025 spring ; Computer Organization
 
-Computer Organization  
 prof. Jaewoong Sim
+---
+## Target Language
+- Verilog
+- Cpp
+
